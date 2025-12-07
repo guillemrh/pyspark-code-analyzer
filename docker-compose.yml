@@ -1,0 +1,27 @@
+services:
+  backend:
+    build: ./backend
+    container_name: pyspark-llm-backend
+    env_file:
+      - ./backend/.env
+    ports:
+      - "8050:8000"
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      retries: 3
+
+  frontend:
+    build: ./frontend
+    container_name: pyspark-llm-frontend
+    ports:
+      - "8501:8501"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./frontend:/app
