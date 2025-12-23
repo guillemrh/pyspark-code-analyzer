@@ -48,11 +48,10 @@ class PySparkASTParser(ast.NodeVisitor):
         # Dictionary is updated to record the lineage of the target_df
         self.variable_lineage[target_df] = [parent_df]
 
-        # Unique node identifier
-        node_id = f"{target_df}_{call_chain[-1]['op']}_{node.lineno}"
-
         # Iterates over the extracted call chain, creating a SparkOperationNode for each operation
         for call in call_chain:
+            # Generate a unique node ID for each operation
+            node_id = f"{target_df}_{call['op']}_{node.lineno}"
             op_node = SparkOperationNode(
                 id=node_id,
                 df_name=target_df,

@@ -1,4 +1,4 @@
-from app.services.dag import build_dag
+from backend.app.services.dag_service import build_dag
 from app.parsers.dag_nodes import SparkOperationNode
 
 
