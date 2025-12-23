@@ -47,11 +47,12 @@ class PySparkASTParser(ast.NodeVisitor):
 
         # Dictionary is updated to record the lineage of the target_df
         self.variable_lineage[target_df] = [parent_df]
-
+        
         # Iterates over the extracted call chain, creating a SparkOperationNode for each operation
         for call in call_chain:
             # Generate a unique node ID for each operation
             node_id = f"{target_df}_{call['op']}_{node.lineno}"
+                    
             op_node = SparkOperationNode(
                 id=node_id,
                 df_name=target_df,
@@ -80,25 +81,47 @@ class PySparkASTParser(ast.NodeVisitor):
         """
         chain = []  # will store the extracted operations
         current = call  # starts as the call node (e.g., the filter or join call)
-
+        base_df = None  # Tracks the base DataFrame for the entire chain
+        tmp = current
+        
+        while isinstance(tmp, ast.Call):
+            if isinstance(tmp.func, ast.Attribute):
+                if isinstance(tmp.func.value, ast.Name):
+                    base_df = tmp.func.value.id
+                    break
+                tmp = tmp.func.value
+            else:
+                break
+            
         while isinstance(current, ast.Call):
             if isinstance(current.func, ast.Attribute):
                 op_name = current.func.attr  # represents the method (select, filter, join, etc.)
 
                 # Default parent extraction (unary operations)
                 parents = []
+                
+                # Detect base DataFrame only once
+                if base_df is None:
+                    if isinstance(current.func.value, ast.Name):
+                        base_df = current.func.value.id
+                        print(f"Detected base DataFrame: {base_df}")
 
-                # The object on which the method is called (e.g., df1.join(...))
-                if isinstance(current.func.value, ast.Name):
-                    parents.append(current.func.value.id)
+                # Unary operations inherit the base DataFrame
+                if op_name not in self.MULTI_PARENT_OPS:
+                    if base_df:
+                        parents.append(base_df)
+                else:
+                    # The object on which the method is called (e.g., df1.join(...))
+                    if isinstance(current.func.value, ast.Name):
+                        parents.append(current.func.value.id)
 
-                # Special handling for multi-parent operations like join
-                if op_name in self.MULTI_PARENT_OPS:
-                    # Extract additional DataFrame arguments (e.g., df2 in df1.join(df2))
-                    if current.args:
-                        for arg in current.args:
-                            if isinstance(arg, ast.Name):
-                                parents.append(arg.id)
+                    # Special handling for multi-parent operations like join
+                    if op_name in self.MULTI_PARENT_OPS:
+                        # Extract additional DataFrame arguments (e.g., df2 in df1.join(df2))
+                        if current.args:
+                            for arg in current.args:
+                                if isinstance(arg, ast.Name):
+                                    parents.append(arg.id)
 
                 chain.append(
                     {
