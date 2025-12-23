@@ -1,6 +1,6 @@
 import ast
 from app.parsers.ast_parser import PySparkASTParser
-from app.services.dag_service import build_dag
+from app.services.dag_service import build_dag, annotate_shuffles
 from app.visualizers.dag_visualizer import render_dag_to_dot
 
 
@@ -15,7 +15,9 @@ def run_dag_pipeline(code: str) -> dict:
     parser.visit(tree)
 
     dag = build_dag(parser.operations)
+    dag = annotate_shuffles(dag, parser.operations)
     dag_dot = render_dag_to_dot(dag)
+
 
     return {
         "dag_dot": dag_dot,

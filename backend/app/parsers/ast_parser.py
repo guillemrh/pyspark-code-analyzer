@@ -12,7 +12,6 @@ class PySparkASTParser(ast.NodeVisitor):
     from single-file PySpark scripts.
     """
     
-    # Multi-parent operations that can have multiple parent DataFrames
     MULTI_PARENT_OPS = {"join", "union", "unionAll", "intersect", "except"}
 
     def __init__(self):

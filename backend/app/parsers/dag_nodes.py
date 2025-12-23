@@ -11,3 +11,4 @@ class SparkOperationNode:
     parents: List[str]
     lineno: int
     op_type: Optional[OpType] = None
+    causes_shuffle: bool = False 

@@ -51,3 +51,15 @@ def build_dag(operations: list[SparkOperationNode]) -> SparkDAG:
         df_producers[op.df_name] = dag_node.id
 
     return dag
+
+SHUFFLE_OPS = {"join", "groupBy", "repartition", "distinct"}
+
+def annotate_shuffles(dag: SparkDAG, operations: list[SparkOperationNode]):
+    """
+    Annotates DAG nodes with causes_shuffle=True/False based on operation type
+    """
+    op_map = {op.id: op for op in operations}
+    for node_id, dag_node in dag.nodes.items():
+        if node_id in op_map:
+            dag_node.causes_shuffle = op_map[node_id].operation in SHUFFLE_OPS
+    return dag
