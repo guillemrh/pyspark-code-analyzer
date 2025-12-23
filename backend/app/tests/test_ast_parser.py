@@ -18,7 +18,7 @@ def test_unary_chain():
 
 def test_multiple_assignments():
     code = """
-    df2 = df.select("a)
+    df2 = df.select("a")
     df3 = df2.groupBy("a").count()
     """
     parser = PySparkASTParser()

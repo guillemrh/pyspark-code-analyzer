@@ -17,7 +17,11 @@ if st.button("Explain"):
     )
 
     if r.status_code != 200:
-        st.error(f"Request failed: {r.json().get('detail')}")
+        try:
+            data = r.json()
+            st.error(f"Request failed: {data}")
+        except Exception:
+            st.error(f"Request failed. Status={r.status_code}, body={r.text}")
         st.stop()
     
     data = r.json()

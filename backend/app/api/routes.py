@@ -11,13 +11,29 @@ from ..rate_limit import rate_limit
 import time
 from ..services.cache import set_result
 from ..config import settings, CACHE_TTL
-
+import ast 
 
 router = APIRouter()
 
 @router.post("/explain/pyspark", response_model=JobResponse, dependencies=[Depends(rate_limit)])
 async def explain_pyspark(request: CodeRequest):
     code = request.code
+    
+    # 🔴 FAST FAIL: syntax validation
+    try:
+        ast.parse(code)
+    except SyntaxError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "type": "SyntaxError",
+                "message": str(e),
+                "lineno": e.lineno,
+                "offset": e.offset,
+            },
+        )
+
+    
     cache_key = make_cache_key_for_code(code)
     
     # 1) Check cache

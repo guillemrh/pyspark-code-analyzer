@@ -2,9 +2,11 @@
 import time
 from celery import Celery
 from celery.utils.log import get_task_logger
+
 from .config import settings, CACHE_TTL
 from .services.llm import GeminiClient
 from .services.cache import set_result
+from .services.dag_pipeline import run_dag_pipeline
 
 logger = get_task_logger(__name__)
 
@@ -16,9 +18,7 @@ celery = Celery(
 
 @celery.task(
     bind=True,
-    autoretry_for=(Exception,),
-    retry_backoff=True,
-    retry_kwargs={"max_retries": 3},
+    autoretry_for=(),
 )
 def explain_code_task(self, job_id: str, code: str, cache_key: str):
     """
@@ -29,32 +29,53 @@ def explain_code_task(self, job_id: str, code: str, cache_key: str):
     """
 
     logger.info(f"Task start job_id={job_id}")
-
-    # ⏱ Measure FULL job duration (queue + execution)
-    task_start = time.time()
-
-    # simulate queue / scheduling delay
-    time.sleep(3)
-
-    client = GeminiClient()
-    result = client.explain_pyspark(code)
-
-    job_duration_ms = int((time.time() - task_start) * 1000)
-
-    status = "failed" if "error" in result else "finished"
-
-    # 1️⃣ Cache key (reusable content)
-    set_result(cache_key, result, ttl=CACHE_TTL)
     
-    # 2️⃣ Job key (execution metadata + content)
+    # Measure FULL job duration (queue + execution)
+    task_start = time.time()
+    
+    # simulate queue / scheduling delay
+    time.sleep(1)
+    
+    try: 
+        client = GeminiClient()
+        llm_result = client.explain_pyspark(code)
+        
+        # Build DAG and generate DOT representation
+        dag_result = run_dag_pipeline(code)
+
+        status = "failed" if "error" in llm_result else "finished"
+
+        # Cache key (reusable content)
+        set_result(cache_key, llm_result, ttl=CACHE_TTL)
+        
+        result_payload = {
+            **llm_result,
+            **dag_result,
+        }
+        
+    except Exception as e:
+        logger.exception(f"Task failed job_id={job_id}")
+
+        status = "failed"
+        result_payload = {
+            "error": {
+                "type": type(e).__name__,
+                "message": str(e),
+            }
+        }
+    
+    job_duration_ms = int((time.time() - task_start) * 1000)
+    
+    # Job key (execution metadata + content)
     job_payload = {
         "job_id": job_id,
         "status": status,
-        "result": result,  # ✅ Direct ExplanationResult
+        "result": result_payload,
         "job_duration_ms": job_duration_ms,
         "cached": False
     }
     
+    # ALWAYS write job state
     set_result(f"job:{job_id}", job_payload, ttl=CACHE_TTL)
     
     logger.info(

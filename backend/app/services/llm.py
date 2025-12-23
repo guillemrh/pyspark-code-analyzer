@@ -12,7 +12,12 @@ class GeminiClient:
         start = time.time()
         try:
             
-            prompt = f"Explain the following PySpark code clearly:\n\n{code}"
+            prompt = f"""
+            Explain the following PySpark code:\n\n{code}
+            Be concise and clear in your explanation, don't expand too much. 
+            Talk about the tradeoffs if any.
+            Add a paragraph at the end with suggestions to improve the code performance.
+            """
 
             response = self.model.generate_content(prompt)
             explanation = response.text
