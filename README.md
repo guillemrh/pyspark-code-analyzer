@@ -32,17 +32,24 @@ The system is built with scalability and observability in mind, separating **req
 │   │   ├── api/
 │   │   │   ├── routes.py           # /explain/pyspark and /status/{job_id} endpoints
 │   │   │   └── schemas.py          # Request/response Pydantic models
-│   │   ├── tasks.py                # Celery background tasks (LLM execution & DAG processing)
 │   │   ├── services/
 │   │   │   ├── llm_service.py      # Gemini LLM client abstraction
-│   │   │   ├── dag_service.py      # DAG building, parsing, and visualization orchestration
+│   │   │   ├── dag_service.py      # OUTDATED
+│   │   │   ├── dag_pipeline.py     
+│   │   │   ├── operation_dag_builder.py
+│   │   │   ├── stage_builder.py
 │   │   │   └── cache_service.py    # Redis helpers for LLM and DAG caching
 │   │   ├── parsers/
 │   │   │   ├── ast_parser.py       # AST parsing logic (visitor pattern)
+│   │   │   ├── spark_semantics.py      
 │   │   │   └── dag_nodes.py        # DAGNode and ASTNode classes
 │   │   ├── visualizers/
 │   │   │   └── dag_visualizer.py   # Graphviz DAG rendering
+│   │   ├── tests/
 │   │   ├── config.py               # Environment-based settings (Pydantic)
+│   │   ├── debug_run.py            
+│   │   ├── workers/
+│   │   │   └── tasks.py            # Celery background tasks (LLM execution & DAG processing)
 │   │   └── rate_limit.py           # API rate limiting logic
 │   ├── Dockerfile
 │   ├── requirements.txt
