@@ -155,7 +155,16 @@ This project is structured as a multi-stage system that grows into a **Spark ETL
 - Auto-generate documentation
 - Build data lineage graphs
 
-### 🟥 Stage 4 — Production Deployment
+### 🟨 Stage 4 — System Integration & UX
+
+- Wire DAG + lineage + antipatterns into Celery
+- Job lifecycle & status tracking
+- Frontend graph rendering
+- Streaming results / progressive explanation
+- Failure handling
+- Versioned analysis artifacts
+
+### 🟥 Stage 5 — Production Deployment
 
 - Production Docker builds
 - Structured logging

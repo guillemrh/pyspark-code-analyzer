@@ -1,9 +1,9 @@
 import ast
 import traceback
 from app.parsers.ast_parser import PySparkASTParser
-from app.services.operation_dag_builder import build_operation_dag
-from app.visualizers.dag_visualizer import render_operation_dag_to_dot
-from app.services.stage_builder import assign_stages
+from app.graphs.operation.operation_graph_builder import build_operation_dag
+from app.visualizers.operation_graph_visualizer import render_operation_dag_to_dot
+from app.graphs.operation.stage_assignment import assign_stages
 from app.services.antipatterns.registry import detect_antipatterns
 
 

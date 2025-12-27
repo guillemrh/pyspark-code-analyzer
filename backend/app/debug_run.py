@@ -1,10 +1,25 @@
 import ast
 
 from app.parsers.ast_parser import PySparkASTParser
-from app.services.operation_dag_builder import build_operation_dag
-from app.visualizers.dag_visualizer import render_operation_dag_to_dot
-from app.services.stage_builder import assign_stages
-from app.services.antipatterns.registry import detect_antipatterns
+from app.graphs.operation.operation_graph_builder import build_operation_dag
+from app.visualizers.operation_graph_visualizer import render_operation_dag_to_dot
+from app.graphs.operation.stage_assignment import assign_stages
+from app.graphs.antipatterns.registry import detect_antipatterns
+from app.services.documentation.dag_summary import (
+    build_dag_summary,
+    dag_summary_markdown,
+)
+from app.services.documentation.stage_summary import (
+    build_stage_summary,
+    stage_summary_markdown,
+)
+from app.services.documentation.antipattern_summary import (
+    build_antipattern_summary,
+    antipattern_summary_markdown,
+)
+from app.graphs.lineage.lineage_graph_builder import build_data_lineage_graph
+from app.visualizers.lineage_graph_visualizer import render_data_lineage_to_dot
+
 
 
 code = """
@@ -77,3 +92,37 @@ dot = render_operation_dag_to_dot(dag)
 
 print("\n=== GRAPHVIZ DOT ===")
 print(dot)
+
+# --------------------
+# DATA LINEAGE
+# --------------------
+lineage = build_data_lineage_graph(parser.operations)
+lineage_dot = render_data_lineage_to_dot(lineage)
+
+print("\n=== DATA LINEAGE GRAPH ===")
+print(lineage_dot)
+
+# --------------------
+# DOCUMENTATION
+# --------------------
+summary = build_dag_summary(dag)
+stage_summary = build_stage_summary(dag)
+antipattern_summary = build_antipattern_summary(findings)
+
+print("\n=== DAG SUMMARY (JSON) ===")
+print(summary)
+
+print("\n=== DAG SUMMARY (MARKDOWN) ===")
+print(dag_summary_markdown(summary))
+
+print("\n=== STAGE SUMMARY (JSON) ===")
+print(stage_summary)
+
+print("\n=== STAGE SUMMARY (MARKDOWN) ===")
+print(stage_summary_markdown(stage_summary))
+
+print("\n=== ANTIPATTERN SUMMARY (JSON) ===")
+print(antipattern_summary)
+
+print("\n=== ANTIPATTERN SUMMARY (MARKDOWN) ===")
+print(antipattern_summary_markdown(antipattern_summary))

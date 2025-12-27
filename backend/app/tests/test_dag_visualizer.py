@@ -1,5 +1,6 @@
-from app.services.dag_service import SparkDAG, DAGNode
-from app.visualizers.dag_visualizer import render_dag_to_dot
+# DEPRECATED
+from app.services.dag_service_deprecated import SparkDAG, DAGNode
+from app.visualizers.operation_graph_visualizer import render_dag_to_dot
 
 
 def test_render_simple_dag():

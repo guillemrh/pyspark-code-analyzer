@@ -1,5 +1,5 @@
 from typing import List, Set
-from app.services.antipatterns.base import AntiPatternRule, AntiPatternFinding
+from app.graphs.antipatterns.base import AntiPatternRule, AntiPatternFinding
 from app.parsers.spark_semantics import OpType
 
 

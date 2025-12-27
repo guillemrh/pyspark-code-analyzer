@@ -1,5 +1,5 @@
 import attrs
-from app.services.operation_dag_builder import OperationDAG
+from app.graphs.operation.operation_graph_builder import OperationDAG
 from app.parsers.spark_semantics import OpType, DependencyType
 
 def render_operation_dag_to_dot(dag: OperationDAG) -> str:

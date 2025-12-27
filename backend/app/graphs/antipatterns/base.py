@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List
-from app.services.operation_dag_builder import OperationDAG
+from app.graphs.operation.operation_graph_builder import OperationDAG
 from dataclasses import dataclass
 
 

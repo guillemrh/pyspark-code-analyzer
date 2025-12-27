@@ -1,7 +1,7 @@
 from __future__ import annotations
 from app.parsers.spark_semantics import DependencyType
 from collections import deque
-from app.services.operation_dag_builder import OperationDAG
+from app.graphs.operation.operation_graph_builder import OperationDAG
     
 def topological_sort(dag: OperationDAG):
     """

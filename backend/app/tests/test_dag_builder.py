@@ -1,4 +1,6 @@
-from backend.app.services.dag_service import build_dag
+
+# DEPRECATED
+from app.services.dag_service_deprecated import build_dag
 from app.parsers.dag_nodes import SparkOperationNode
 
 
