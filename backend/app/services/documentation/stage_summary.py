@@ -5,7 +5,7 @@ from app.graphs.operation.operation_graph_builder import OperationDAG
 from app.parsers.spark_semantics import DependencyType
 
 
-def build_stage_summary(dag: OperationDAG) -> Dict[str, Any]:
+def stage_summary_json(dag: OperationDAG) -> Dict[str, Any]:
     """
     Summarize Spark stages inferred from wide dependencies.
     """

@@ -4,7 +4,7 @@ from collections import defaultdict
 from app.graphs.antipatterns.base import AntiPatternFinding
 
 
-def build_antipattern_summary(
+def antipatterns_summary_json(
     findings: List[AntiPatternFinding],
 ) -> Dict[str, Any]:
     """

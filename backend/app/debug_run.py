@@ -6,15 +6,15 @@ from app.visualizers.operation_graph_visualizer import render_operation_dag_to_d
 from app.graphs.operation.stage_assignment import assign_stages
 from app.graphs.antipatterns.registry import detect_antipatterns
 from app.services.documentation.dag_summary import (
-    build_dag_summary,
+    dag_summary_json,
     dag_summary_markdown,
 )
 from app.services.documentation.stage_summary import (
-    build_stage_summary,
+    stage_summary_json,
     stage_summary_markdown,
 )
 from app.services.documentation.antipattern_summary import (
-    build_antipattern_summary,
+    antipatterns_summary_json,
     antipattern_summary_markdown,
 )
 from app.graphs.lineage.lineage_graph_builder import build_data_lineage_graph
@@ -105,9 +105,9 @@ print(lineage_dot)
 # --------------------
 # DOCUMENTATION
 # --------------------
-summary = build_dag_summary(dag)
-stage_summary = build_stage_summary(dag)
-antipattern_summary = build_antipattern_summary(findings)
+summary = dag_summary_json(dag)
+stage_summary = stage_summary_json(dag)
+antipattern_summary = antipatterns_summary_json(findings)
 
 print("\n=== DAG SUMMARY (JSON) ===")
 print(summary)

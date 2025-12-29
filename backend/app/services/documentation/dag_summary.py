@@ -3,7 +3,7 @@ from app.graphs.operation.operation_graph_builder import OperationDAG
 from app.parsers.spark_semantics import OpType, DependencyType
 
 
-def build_dag_summary(dag: OperationDAG) -> Dict[str, Any]:
+def dag_summary_json(dag: OperationDAG) -> Dict[str, Any]:
     """
     Build a structural summary of the Spark operation DAG.
     This is descriptive, not analytical.
