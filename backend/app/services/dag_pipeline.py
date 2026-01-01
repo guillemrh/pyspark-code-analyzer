@@ -43,15 +43,24 @@ def run_dag_pipeline(code: str) -> dict:
         # Extract Spark operations
         parser = PySparkASTParser()
         parser.visit(tree)
+        
+        print("=== PARSER OPERATIONS ===")
+        for op in parser.operations:
+            print(op)
 
         # Build execution / operation DAG
         operation_dag = build_operation_dag(parser.operations)
+        
+        print("=== DAG NODES ===")
+        for node_id, node in operation_dag.nodes.items():
+            print(f"{node_id}: {type(node)}, {getattr(node, 'parents', None)}")
+
         
         # Build data lineage graph
         lineage_graph = build_data_lineage_graph(parser.operations)
 
         # Assign stages based on wide dependencies
-        operation_dag = assign_stages(operation_dag)
+        assign_stages(operation_dag)
         
         # Detect anti-patterns (multiple actions on the same lineage)
         findings = detect_antipatterns(operation_dag)
@@ -60,25 +69,30 @@ def run_dag_pipeline(code: str) -> dict:
         dag_dot = render_operation_dag_to_dot(operation_dag)
         lineage_dot = render_data_lineage_to_dot(lineage_graph)
 
+                # DAG summaries
+        dag_summary_dict = dag_summary_json(operation_dag)
+        stage_summary_dict = stage_summary_json(operation_dag)
+        lineage_summary_dict = lineage_summary_json(lineage_graph)
+        antipattern_summary_dict = antipatterns_summary_json(findings)
+
         return {
             "dag_dot": dag_dot,
             "lineage_dot": lineage_dot,
-            # Summaries
             "dag_summary": {
-                "json": dag_summary_json(operation_dag),
-                "markdown": dag_summary_markdown(operation_dag),
+                "json": dag_summary_dict,
+                "markdown": dag_summary_markdown(dag_summary_dict),
             },
             "stage_summary": {
-                "json": stage_summary_json(operation_dag),
-                "markdown": stage_summary_markdown(operation_dag),
+                "json": stage_summary_dict,
+                "markdown": stage_summary_markdown(stage_summary_dict),
             },
             "lineage_summary": {
-                "json": lineage_summary_json(lineage_graph),
+                "json": lineage_summary_dict,
                 "markdown": lineage_summary_markdown(lineage_graph),
             },
             "antipatterns": {
-                "json": antipatterns_summary_json(findings),
-                "markdown": antipattern_summary_markdown(findings),
+                "json": antipattern_summary_dict,
+                "markdown": antipattern_summary_markdown(antipattern_summary_dict),
             },
         }
     except Exception as e:

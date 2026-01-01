@@ -36,22 +36,66 @@ if st.button("Explain"):
                 f"{BACKEND_BASE}/status/{job_id}",
                 timeout=10,
             )
-            j = resp.json()
+            try:
+                j = resp.json()
+            except Exception:
+                st.error(f"Backend error ({resp.status_code}): {resp.text}")
+                break
+
             status = j.get("status")
 
             if status in ("finished", "failed"):
-                llm_result = j.get("result")
+                result = j.get("result")
 
-                if llm_result:
-                    st.write("**Explanation:**")
-                    st.write(llm_result.get("explanation"))
-                    st.write(
-                        f"Tokens: {llm_result.get('tokens_used')}, "
-                        f"Total duration: {j.get('job_duration_ms')} ms, "
-                        f"Model (Gemini) latency: {llm_result.get('latency_ms')} ms "
-                    )
-                else:
+                if not result:
                     st.error("No result returned.")
+                    break
+
+                llm = result.get("llm", {})
+                analysis = result.get("analysis", {})
+
+                # --- LLM ---
+                st.subheader("Explanation")
+                st.write(llm.get("explanation"))
+
+                st.caption(
+                    f"Tokens: {llm.get('tokens_used')} | "
+                    f"Model latency: {llm.get('latency_ms')} ms | "
+                    f"Job duration: {j.get('job_duration_ms')} ms"
+                )
+
+                # --- DAG ---
+                st.subheader("Operation DAG")
+                if "dag_dot" in analysis:
+                    st.graphviz_chart(analysis["dag_dot"])
+
+                # --- Lineage ---
+                st.subheader("Data Lineage")
+                if "lineage_dot" in analysis:
+                    st.graphviz_chart(analysis["lineage_dot"])
+
+                # --- Stage Summary ---
+                st.subheader("Stage Summary")
+                stage_summary = analysis.get("stage_summary")
+                if stage_summary:
+                    st.markdown(stage_summary.get("markdown", ""))
+                else:
+                    st.info("No stage summary available.")
+
+
+                # --- Anti-patterns ---
+                st.subheader("Anti-Patterns")
+                antipatterns = analysis.get("antipatterns")
+                if antipatterns:
+                    st.markdown(antipatterns.get("markdown", ""))
+                else:
+                    st.info("No anti-patterns detected.")
+
+                st.write(
+                    f"Tokens: {llm.get('tokens_used')}, "
+                    f"Total duration: {j.get('job_duration_ms')} ms, "
+                    f"Model (Gemini) latency: {llm.get('latency_ms')} ms "
+                )
 
                 break 
 

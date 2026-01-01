@@ -15,6 +15,11 @@ def lineage_summary_json(lineage: DataLineageGraph) -> Dict[str, Any]:
 
 
 def lineage_summary_markdown(lineage: DataLineageGraph) -> str:
+    if not hasattr(lineage, "parents"):
+        raise TypeError(
+            "lineage_summary_markdown expects DataLineageGraph, "
+            f"got {type(lineage)}"
+        )
     lines = ["## Data Lineage\n"]
 
     for df, parents in lineage.parents.items():

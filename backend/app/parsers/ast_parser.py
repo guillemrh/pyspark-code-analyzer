@@ -137,6 +137,49 @@ class PySparkASTParser(ast.NodeVisitor):
         # The chain is reversed to maintain the original order of operations
         return list(reversed(chain))
 
+    def visit_Expr(self, node: ast.Expr):
+        """
+        Handles standalone calls like:
+        df.show()
+        df.collect()
+        df1.filter(...)
+        """
+        if not isinstance(node.value, ast.Call):
+            return
+
+        call_chain = self._extract_call_chain(node.value)
+        if not call_chain:
+            return
+
+        # Try to infer the DF name from the base call
+        base_df = None
+        current = node.value
+        while isinstance(current, ast.Call):
+            if isinstance(current.func, ast.Attribute):
+                if isinstance(current.func.value, ast.Name):
+                    base_df = current.func.value.id
+                    break
+                current = current.func.value
+            else:
+                break
+
+        for call in call_chain:
+            node_id = f"{base_df}_{call['op']}_{node.lineno}"
+
+            op_type = SPARK_OPS.get(call["op"], OpType.TRANSFORMATION)
+
+            op_node = SparkOperationNode(
+                id=node_id,
+                df_name=base_df or "UNKNOWN",
+                operation=call["op"],
+                parents=call["parents"],
+                lineno=node.lineno,
+                op_type=op_type,
+            )
+
+            self.operations.append(op_node)
+
+        self.generic_visit(node)
 
     def _get_base_name(self, node) -> str:
         """

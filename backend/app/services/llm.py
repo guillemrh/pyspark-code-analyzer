@@ -2,10 +2,16 @@ import time
 import google.generativeai as genai
 from app.config import settings
 
+
+class LLMRateLimitError(Exception):
+    """Raised when the LLM hits a rate or quota limit."""
+    pass
+
 class GeminiClient:
-    def __init__(self):
+    def __init__(self, model: str | None = None):
         genai.configure(api_key=settings.gemini_api_key)
-        self.model = genai.GenerativeModel("gemini-2.5-flash-lite")
+        self.model_name = model or settings.gemini_model
+        self.model = genai.GenerativeModel(self.model_name)
 
 
     def explain_pyspark(self, code: str) -> dict:
@@ -42,7 +48,12 @@ class GeminiClient:
                 "latency_ms": latency_ms
             }
         except Exception as e:
+            msg = str(e).lower()
+
+            if "quota" in msg or "rate" in msg or "429" in msg:
+                raise LLMRateLimitError(str(e))
+
             return {
-                "error": str(e), 
-                "latency_ms": int((time.time() - start) * 1000)
-                }
+                "error": str(e),
+                "latency_ms": int((time.time() - start) * 1000),
+            }

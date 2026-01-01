@@ -43,12 +43,15 @@ async def explain_pyspark(request: CodeRequest):
         logging.info("CACHE HIT for pyspark explanation")
         request_duration_ms = int((time.time() - request_start) * 1000)
         cache_job_id = f"cached:{cache_key}"
-        payload ={
+        payload = {
             "job_id": cache_job_id,
             "status": "finished",
-            "result": cached,            # this should match ExplanationResult
+            "result": {
+                "llm": cached,
+                "analysis": None,
+            },
             "job_duration_ms": 0,
-            "cached": True
+            "cached": True,
         }
         set_result(f"job:{cache_job_id}", payload, ttl=CACHE_TTL)
 
@@ -63,7 +66,7 @@ async def explain_pyspark(request: CodeRequest):
     
     return {"job_id": job_id, "status": "pending", "cached": False}
 
-@router.get("/status/{job_id}", response_model=ExplanationResponse)
+@router.get("/status/{job_id}")
 async def get_status(job_id: str):
     job_key = f"job:{job_id}"
     payload = get_result(job_key)
@@ -76,7 +79,13 @@ async def get_status(job_id: str):
             "job_duration_ms": None,
             "cached": False
         }
-    return payload
+    return {
+        "job_id": payload.get("job_id"),
+        "status": payload.get("status", "pending"),
+        "result": payload.get("result"),
+        "job_duration_ms": payload.get("job_duration_ms"),
+        "cached": payload.get("cached", False),
+    }
 
 @router.get("/health")
 async def health():

@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     backend_port: int = 8050  # default port for Docker network
     timeout_seconds: int = 15
     redis_url: str = "redis://redis:6379/0"
+    gemini_model: str = "gemini-2.5-flash"
 
     class Config:
         env_file = ".env"

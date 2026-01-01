@@ -20,10 +20,7 @@ from app.services.documentation.antipattern_summary import (
 from app.graphs.lineage.lineage_graph_builder import build_data_lineage_graph
 from app.visualizers.lineage_graph_visualizer import render_data_lineage_to_dot
 
-
-
-code = """
-df_base = df.select("user_id", "value").filter("value > 10")
+'''df_base = df.select("user_id", "value").filter("value > 10")
 
 df_rep = df_base.repartition(200)
 
@@ -34,7 +31,10 @@ df_grouped.collect()
 
 df_joined = df_grouped.join(df_base, on="user_id")
 df_joined.count()
-"""
+'''
+
+
+code = """df_base = df.select("user_id", "value").filter("value > 10")"""
 
 # --------------------
 # AST PARSING
