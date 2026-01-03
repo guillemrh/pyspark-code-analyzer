@@ -1,56 +1,102 @@
-## PySpark Code Explainer
+# PySpark Intelligence Platform
 
-A lightweight, containerized AI system for analyzing and explaining PySpark code, designed to evolve into a full **Spark ETL intelligence layer**.
+A distributed, observable system for **static analysis, execution graph extraction, lineage tracking, and LLM-assisted explanation of PySpark code**.
+
+This project goes beyond simple code explanation and evolves into a **Spark ETL intelligence layer** capable of understanding transformations, execution stages, data lineage, and performance anti-patterns — all exposed through a production-grade architecture.
 
 ---
 
 ## Overview
 
-This project provides a web interface where users can submit PySpark code and receive structured explanations and execution metadata.
+This system allows users to submit PySpark code and receive:
 
-The system is built with scalability and observability in mind, separating **request handling**, **background execution**, and **analysis logic**.
+- Natural-language explanations (LLM-powered)
+- Logical operation DAGs
+- Stage-level execution summaries
+- Data lineage graphs
+- Anti-pattern and performance insights
+- Cached and versioned analysis artifacts
 
-### Architecture Components
+The platform is designed with **scalability, observability, and fault tolerance** in mind, separating real-time request handling from heavy analysis workloads.
 
-| Component | Responsibility |
-|--------|----------------|
-| **FastAPI Backend** | API endpoints, job orchestration, validation |
-| **Redis** | Caching, job state storage, rate limiting |
-| **Celery Workers** | Background execution of long-running tasks |
-| **LLM (Gemini)** | Natural language explanation layer |
-| **Streamlit Frontend** | User interface |
-| **Docker Compose** | Local orchestration |
+---
+
+## High-Level Architecture
+
+The system follows a **request → cache → async execution → aggregation** model:
+
+- FastAPI handles validation, orchestration, and status tracking
+- Redis provides caching, rate limiting, and job state
+- Celery workers execute CPU- and LLM-heavy tasks
+- Streamlit provides an interactive UI
+- Prometheus and structured logs provide observability
+
+---
+
+## Core Capabilities
+
+- 🔍 Static analysis of PySpark code via AST parsing
+- 🧠 Logical DAG construction (transformations & actions)
+- 🧬 Data lineage graph generation
+- ⚠️ Detection of Spark performance anti-patterns
+- 🤖 LLM-powered explanations with fallback models
+- ♻️ Redis-backed caching for LLM and analysis results
+- 📊 Structured logging and metrics (production-ready)
+- 🧵 Asynchronous execution with Celery workers
 
 ---
 
 ## 🧱 Project Structure
+
 ```text
 .
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                 # FastAPI app initialization and lifecycle
 │   │   ├── api/
-│   │   │   ├── routes.py           # /explain/pyspark and /status/{job_id} endpoints
+│   │   │   ├── routes.py           # API endpoints (/explain, /status, /health)
 │   │   │   └── schemas.py          # Request/response Pydantic models
 │   │   ├── services/
-│   │   │   ├── llm_service.py      # Gemini LLM client abstraction
-│   │   │   ├── dag_service.py      # OUTDATED
-│   │   │   ├── dag_pipeline.py     
-│   │   │   ├── operation_dag_builder.py
-│   │   │   ├── stage_builder.py
-│   │   │   └── cache_service.py    # Redis helpers for LLM and DAG caching
+│   │   │   ├── llm.py              # LLM abstraction (Gemini + fallback logic)
+│   │   │   ├── dag_pipeline.py     # End-to-end DAG & lineage construction
+│   │   │   ├── cache.py            # Redis helpers (LLM + analysis caching)
+│   │   │   ├── dag_service_deprecated.py # Legacy DAG service (for reference)
+│   │   │   └── documentation/      # Summarization logic for various components
+│   │   │       ├── stage_summary.py
+│   │   │       ├── lineage_summary.py
+│   │   │       ├── dag_summary.py
+│   │   │       └── antipattern_summary.py
 │   │   ├── parsers/
-│   │   │   ├── ast_parser.py       # AST parsing logic (visitor pattern)
-│   │   │   ├── spark_semantics.py      
-│   │   │   └── dag_nodes.py        # DAGNode and ASTNode classes
+│   │   │   ├── ast_parser.py       # AST parsing logic
+│   │   │   ├── spark_semantics.py  # Spark-specific semantics
+│   │   │   └── dag_nodes.py        # DAGNode and ASTNode definitions
+│   │   ├── graphs/                 # Core graph construction and pattern logic
+│   │   │   ├── antipatterns/       # Spark performance anti-pattern detection
+│   │   │   │   ├── registry.py
+│   │   │   │   ├── base.py
+│   │   │   │   └── rules/
+│   │   │   │       ├── multiple_actions.py
+│   │   │   │       ├── repartition_misuse.py
+│   │   │   │       ├── action_without_cache.py
+│   │   │   │       └── early_shuffle.py
+│   │   │   ├── lineage/
+│   │   │   │   └── lineage_graph_builder.py
+│   │   │   └── operation/
+│   │   │       ├── operation_graph_builder.py
+│   │   │       └── stage_assignment.py
 │   │   ├── visualizers/
-│   │   │   └── dag_visualizer.py   # Graphviz DAG rendering
-│   │   ├── tests/
-│   │   ├── config.py               # Environment-based settings (Pydantic)
-│   │   ├── debug_run.py            
+│   │   │   ├── lineage_graph_visualizer.py   # DOT rendering for lineage
+│   │   │   └── operation_graph_visualizer.py # DOT rendering for operations
 │   │   ├── workers/
-│   │   │   └── tasks.py            # Celery background tasks (LLM execution & DAG processing)
-│   │   └── rate_limit.py           # API rate limiting logic
+│   │   │   └── tasks.py            # Celery background tasks
+│   │   ├── tests/                  # Unit and integration tests
+│   │   │   ├── test_ast_parser.py
+│   │   │   ├── test_dag_visualizer.py
+│   │   │   └── test_dag_builder.py
+│   │   ├── rate_limit.py           # API rate limiting
+│   │   ├── config.py               # Environment-based configuration
+│   │   ├── logging.py              # Centralized logging configuration
+│   │   └── debug_run.py            # Local debugging entry point
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   └── README.md
@@ -58,8 +104,8 @@ The system is built with scalability and observability in mind, separating **req
 │   ├── streamlit_app.py            # Streamlit UI
 │   ├── Dockerfile
 │   └── README.md
-├── docker-compose.yml               # Multi-service orchestration
-└── README.md                        # Project-level documentation
+├── docker-compose.yml              # Multi-service orchestration
+└── README.md                       # Project-level documentation
 ```
 
 ---
@@ -68,64 +114,81 @@ The system is built with scalability and observability in mind, separating **req
 
 ### Prerequisites
 
-- **Docker**
-- **Docker Compose**
-- **Gemini API key**
+- Docker
+- Docker Compose
+- Gemini API key
 
 ### Environment Configuration
 
-Create a `.env` file in the backend directory with:
+Create a `.env` file in `backend/` with:
 
-- **GEMINI_API_KEY** — Gemini API key
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL`
+- `GEMINI_FALLBACK_MODEL`
+- `REDIS_URL`
+
+---
 
 ### Start the Application
 
-- Run `docker compose up --build`
-- Open **http://localhost:8501** in your browser
+- `docker compose up --build`
+- Streamlit UI: http://localhost:8501
+- FastAPI backend: http://localhost:8000
+- Prometheus metrics: http://localhost:8000/metrics
 
 ---
 
-## API
+## API Overview
 
 ### POST /explain/pyspark
 
-Submits PySpark code for analysis.  
-If the same code was previously analyzed, the cached result is reused.
+Submits PySpark code for analysis.
 
-**Request Fields**
-
-| Field | Type | Description |
-|-----|-----|-------------|
-| **code** | string | PySpark source code |
-
-**Response Fields**
-
-| Field | Description |
-|-----|-------------|
-| **job_id** | Unique identifier for the background job |
-| **status** | `pending`, `finished`, or `failed` |
-| **cached** | Whether the result came from cache |
-
----
+- Performs syntax validation
+- Checks Redis cache
+- Enqueues Celery job if needed
 
 ### GET /status/{job_id}
 
-Returns the job result when background processing is complete.
+Returns job status and results, including:
+
+- LLM explanation
+- DAG and lineage graphs
+- Stage summaries
+- Anti-pattern detection
+
+---
+
+## Observability
+
+### Logging
+- Structured JSON logs
+- Correlation via job_id
+- Separate logs for API, workers, and cache
+
+### Metrics
+- HTTP request rates & latency
+- LLM latency and rate-limit events
+- Cache hit/miss ratios
+- Celery job duration and failures
+
+### Tracing (planned)
+- End-to-end request tracing via OpenTelemetry
 
 ---
 
 ## Technology Stack
 
-| Category | Tools |
-|------|------|
-| **Backend** | FastAPI, Pydantic |
-| **Async Processing** | Celery |
-| **Caching & State** | Redis |
-| **Frontend** | Streamlit |
-| **LLM** | Gemini |
-| **Infrastructure** | Docker, Docker Compose |
+| Layer | Tools |
+|----|----|
+| API | FastAPI, Pydantic |
+| Async | Celery |
+| Cache & State | Redis |
+| Frontend | Streamlit |
+| LLM | Gemini (with fallback models) |
+| Observability | Structured logs, Prometheus |
+| Infra | Docker, Docker Compose |
 
----
 
 ## Project Roadmap
 
