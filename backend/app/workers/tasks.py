@@ -8,6 +8,13 @@ from ..services.llm import explain_with_fallback
 from ..services.cache import set_result
 from ..services.dag_pipeline import run_dag_pipeline
 
+from app.metrics import (
+    JOBS_STARTED_TOTAL,
+    JOBS_FAILED_TOTAL,
+    JOB_DURATION_SECONDS,
+)
+
+
 logger = get_task_logger(__name__)
 
 celery = Celery(
@@ -28,7 +35,7 @@ def explain_code_task(self, job_id: str, code: str, cache_key: str):
     2. Stores reusable result in cache
     3. Stores execution-specific job status
     """
-    
+
     # Update job status to running
     job_key = f"job:{job_id}"
     
@@ -52,11 +59,11 @@ def explain_code_task(self, job_id: str, code: str, cache_key: str):
             "component": "celery_worker",
         },
     )
+    
+    JOBS_STARTED_TOTAL.inc()
+    task_start = time.time()
 
     update("running")
-    
-    # Measure FULL job duration (queue + execution)
-    task_start = time.time()
     
     # simulate queue / scheduling delay
     time.sleep(1)
@@ -103,9 +110,8 @@ def explain_code_task(self, job_id: str, code: str, cache_key: str):
             },
         )
 
-
-        
     except Exception as e:
+        JOBS_FAILED_TOTAL.inc()
         logger.exception(
             "task_failed",
             extra={
@@ -131,6 +137,9 @@ def explain_code_task(self, job_id: str, code: str, cache_key: str):
         "job_duration_ms": job_duration_ms,
         "cached": False,
     }
+    
+    JOB_DURATION_SECONDS.observe(
+    time.time() - task_start
+    )
 
     return job_payload
-

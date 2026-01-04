@@ -8,3 +8,4 @@ celery[redis]
 graphviz
 attrs
 gunicorn
+prometheus-client

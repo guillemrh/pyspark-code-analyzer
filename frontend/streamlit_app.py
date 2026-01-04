@@ -4,7 +4,7 @@ import time
 
 BACKEND_BASE = "http://backend:8000"  # internal when running in docker-compose
 
-st.title("PySpark Code Explainer (LLM)")
+st.title("PySpark Intelligence Platform")
 
 code = st.text_area("PySpark code")
 

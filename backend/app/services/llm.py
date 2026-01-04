@@ -3,7 +3,14 @@ import google.generativeai as genai
 from app.config import settings
 import logging 
 
-logger = logging.getLogger(__name__)
+from app.metrics import (
+    LLM_CALLS_TOTAL,
+    LLM_RATE_LIMIT_TOTAL,
+    LLM_LATENCY_SECONDS,
+)
+
+
+logger = logging.getLogger("llm")
 
 class LLMRateLimitError(Exception):
     """Raised when the LLM hits a rate or quota limit."""
@@ -33,6 +40,7 @@ class GeminiClient:
             Talk about the tradeoffs if any.
             Add a paragraph at the end with suggestions to improve the code performance.
             """
+            LLM_CALLS_TOTAL.labels(model=self.model_name).inc()
             response = self.model.generate_content(prompt)
             explanation = response.text
 
@@ -60,6 +68,7 @@ class GeminiClient:
             msg = str(e).lower()
 
             if "quota" in msg or "rate" in msg or "429" in msg:
+                LLM_RATE_LIMIT_TOTAL.labels(model=self.model_name).inc()
                 logger.warning(
                 "llm_rate_limited",
                 extra={
@@ -74,6 +83,10 @@ class GeminiClient:
                 "error": str(e),
                 "latency_ms": int((time.time() - start) * 1000),
             }
+        finally:
+            LLM_LATENCY_SECONDS.labels(model=self.model_name).observe(
+                time.time() - start
+            )
 
 def explain_with_fallback(code: str) -> dict:
     models = [
