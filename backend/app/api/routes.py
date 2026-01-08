@@ -5,12 +5,15 @@ from uuid import uuid4
 import time
 import ast
 import logging
+from opentelemetry import trace
+
 
 from ..services.cache import make_cache_key_for_code, get_result, set_result
 from ..workers.tasks import explain_code_task
 from ..config import CACHE_TTL
 from ..rate_limit import rate_limit
 from .schemas import CodeRequest, JobResponse
+from app.telemetry.context import inject_trace_context
 
 from app.metrics import (
     HTTP_REQUESTS_TOTAL,
@@ -22,6 +25,7 @@ from app.metrics import (
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 @router.post(
@@ -45,7 +49,9 @@ async def explain_pyspark(request: CodeRequest):
     # 1) FAST FAIL: syntax validation
     try:
         code = request.code
-        ast.parse(code)
+        with tracer.start_as_current_span("syntax_validation"):
+            ast.parse(code)
+
     except SyntaxError as e:
         status = "bad_request"
         raise HTTPException(
@@ -61,7 +67,8 @@ async def explain_pyspark(request: CodeRequest):
     # 2) Check cache
     try: 
         cache_key = make_cache_key_for_code(code)
-        cached = get_result(cache_key)
+        with tracer.start_as_current_span("cache_lookup"):
+            cached = get_result(cache_key)
         
         if cached:
             CACHE_HIT_TOTAL.inc()
@@ -101,14 +108,19 @@ async def explain_pyspark(request: CodeRequest):
         CACHE_MISS_TOTAL.inc()
         status = "queued"
         
+        trace_ctx = {}
+        inject_trace_context(trace_ctx)
+
         job_id = str(uuid4())
-        explain_code_task.apply_async(
-                    kwargs={
-                        "job_id": job_id,
-                        "code": code,
-                        "cache_key": cache_key,
-                    }
-                )  
+        with tracer.start_as_current_span("enqueue_job"):
+            explain_code_task.apply_async(
+                        kwargs={
+                            "job_id": job_id,
+                            "code": code,
+                            "cache_key": cache_key,
+                            "trace_ctx": trace_ctx,
+                        }
+                    )  
         
         return {"job_id": job_id, "status": "pending", "cached": False}
     

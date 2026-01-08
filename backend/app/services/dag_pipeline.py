@@ -25,6 +25,10 @@ from app.services.documentation.lineage_summary import (
     lineage_summary_markdown,
 )
 
+from opentelemetry import trace
+
+tracer = trace.get_tracer(__name__)
+
 
 
 def run_dag_pipeline(code: str) -> dict:
@@ -36,66 +40,73 @@ def run_dag_pipeline(code: str) -> dict:
         -> Operation DAG (execution / performance view)
         -> Graphviz DOT
     """
-    try:
-        # Parse code into AST
-        tree = ast.parse(code)
+    with tracer.start_as_current_span(
+        "dag_pipeline",
+        attributes={
+            "component": "analysis",
+            "language": "pyspark",
+        },
+    ):
+        try:
+            # Parse code into AST
+            tree = ast.parse(code)
 
-        # Extract Spark operations
-        parser = PySparkASTParser()
-        parser.visit(tree)
-        
-        print("=== PARSER OPERATIONS ===")
-        for op in parser.operations:
-            print(op)
+            # Extract Spark operations
+            parser = PySparkASTParser()
+            parser.visit(tree)
+            
+            print("=== PARSER OPERATIONS ===")
+            for op in parser.operations:
+                print(op)
 
-        # Build execution / operation DAG
-        operation_dag = build_operation_dag(parser.operations)
-        
-        print("=== DAG NODES ===")
-        for node_id, node in operation_dag.nodes.items():
-            print(f"{node_id}: {type(node)}, {getattr(node, 'parents', None)}")
+            # Build execution / operation DAG
+            operation_dag = build_operation_dag(parser.operations)
+            
+            print("=== DAG NODES ===")
+            for node_id, node in operation_dag.nodes.items():
+                print(f"{node_id}: {type(node)}, {getattr(node, 'parents', None)}")
 
-        
-        # Build data lineage graph
-        lineage_graph = build_data_lineage_graph(parser.operations)
+            
+            # Build data lineage graph
+            lineage_graph = build_data_lineage_graph(parser.operations)
 
-        # Assign stages based on wide dependencies
-        assign_stages(operation_dag)
-        
-        # Detect anti-patterns (multiple actions on the same lineage)
-        findings = detect_antipatterns(operation_dag)
+            # Assign stages based on wide dependencies
+            assign_stages(operation_dag)
+            
+            # Detect anti-patterns (multiple actions on the same lineage)
+            findings = detect_antipatterns(operation_dag)
 
-        # Render lineage and operation DAG to Graphviz DOT
-        dag_dot = render_operation_dag_to_dot(operation_dag)
-        lineage_dot = render_data_lineage_to_dot(lineage_graph)
+            # Render lineage and operation DAG to Graphviz DOT
+            dag_dot = render_operation_dag_to_dot(operation_dag)
+            lineage_dot = render_data_lineage_to_dot(lineage_graph)
 
-                # DAG summaries
-        dag_summary_dict = dag_summary_json(operation_dag)
-        stage_summary_dict = stage_summary_json(operation_dag)
-        lineage_summary_dict = lineage_summary_json(lineage_graph)
-        antipattern_summary_dict = antipatterns_summary_json(findings)
+                    # DAG summaries
+            dag_summary_dict = dag_summary_json(operation_dag)
+            stage_summary_dict = stage_summary_json(operation_dag)
+            lineage_summary_dict = lineage_summary_json(lineage_graph)
+            antipattern_summary_dict = antipatterns_summary_json(findings)
 
-        return {
-            "dag_dot": dag_dot,
-            "lineage_dot": lineage_dot,
-            "dag_summary": {
-                "json": dag_summary_dict,
-                "markdown": dag_summary_markdown(dag_summary_dict),
-            },
-            "stage_summary": {
-                "json": stage_summary_dict,
-                "markdown": stage_summary_markdown(stage_summary_dict),
-            },
-            "lineage_summary": {
-                "json": lineage_summary_dict,
-                "markdown": lineage_summary_markdown(lineage_graph),
-            },
-            "antipatterns": {
-                "json": antipattern_summary_dict,
-                "markdown": antipattern_summary_markdown(antipattern_summary_dict),
-            },
-        }
-    except Exception as e:
-        print(f"ERROR in run_dag_pipeline: {e}")
-        traceback.print_exc()
-        raise
+            return {
+                "dag_dot": dag_dot,
+                "lineage_dot": lineage_dot,
+                "dag_summary": {
+                    "json": dag_summary_dict,
+                    "markdown": dag_summary_markdown(dag_summary_dict),
+                },
+                "stage_summary": {
+                    "json": stage_summary_dict,
+                    "markdown": stage_summary_markdown(stage_summary_dict),
+                },
+                "lineage_summary": {
+                    "json": lineage_summary_dict,
+                    "markdown": lineage_summary_markdown(lineage_graph),
+                },
+                "antipatterns": {
+                    "json": antipattern_summary_dict,
+                    "markdown": antipattern_summary_markdown(antipattern_summary_dict),
+                },
+            }
+        except Exception as e:
+            print(f"ERROR in run_dag_pipeline: {e}")
+            traceback.print_exc()
+            raise

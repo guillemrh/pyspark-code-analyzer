@@ -9,3 +9,9 @@ graphviz
 attrs
 gunicorn
 prometheus-client
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-jaeger
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-asgi
+deprecated

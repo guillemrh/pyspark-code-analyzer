@@ -3,6 +3,11 @@ services:
       image: redis:7-alpine
       container_name: pyspark-llm-redis
       restart: unless-stopped
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    ports:
+      - "16686:16686"   # UI
+      - "6831:6831/udp"
   backend:
     build: ./backend
     container_name: pyspark-llm-backend
@@ -12,6 +17,7 @@ services:
       - "8050:8000"
     depends_on:
       - redis
+      - jaeger
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/docs\")'"]
@@ -32,6 +38,7 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     depends_on:
       - backend
+
   frontend:
     build: ./frontend
     container_name: pyspark-llm-frontend
