@@ -4,7 +4,7 @@ from celery import Celery
 from celery.utils.log import get_task_logger
 
 from ..config import settings, CACHE_TTL
-from ..services.llm import explain_with_fallback
+from app.services.llm import explain_with_fallback
 from ..services.cache import set_result
 from ..services.dag_pipeline import run_dag_pipeline
 

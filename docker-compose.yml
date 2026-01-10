@@ -11,8 +11,11 @@ services:
   backend:
     build: ./backend
     container_name: pyspark-llm-backend
-    env_file:
-      - ./backend/.env
+    environment:
+      - APP_ENV=docker
+      - REDIS_URL=redis://redis:6379/0
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL}
     ports:
       - "8050:8000"
     depends_on:
@@ -20,13 +23,16 @@ services:
       - jaeger
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/docs\")'"]
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")'"]
   worker:  
     build: ./backend 
     container_name: pyspark-llm-worker
-    command: celery -A app.workers.tasks.celery worker --loglevel=info --concurrency=1
-    env_file:
-      - ./backend/.env
+    command: python -m celery -A app.workers.tasks.celery worker --loglevel=info --concurrency=1
+    environment:
+      - APP_ENV=docker
+      - REDIS_URL=redis://redis:6379/0
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL}
     depends_on:
       - redis
     restart: unless-stopped

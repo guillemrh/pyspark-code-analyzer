@@ -99,22 +99,22 @@ class GeminiClient:
                     time.time() - start
                 )
 
-    def explain_with_fallback(code: str) -> dict:
-        models = [
-            settings.gemini_model,
-            settings.gemini_fallback_model,
-        ]
+def explain_with_fallback(code: str) -> dict:
+    models = [
+        settings.gemini_model,
+        settings.gemini_fallback_model,
+    ]
 
-        last_error = None
+    last_error = None
 
-        for model in filter(None, models):
-            try:
-                client = GeminiClient(model=model)
-                return client.explain_pyspark(code)
-            except LLMRateLimitError as e:
-                last_error = e
-                continue
+    for model in filter(None, models):
+        try:
+            client = GeminiClient(model=model)
+            return client.explain_pyspark(code)
+        except LLMRateLimitError as e:
+            last_error = e
+            continue
 
-        raise LLMRateLimitError(
-            f"All models exhausted. Last error: {last_error}"
-        )
+    raise LLMRateLimitError(
+        f"All models exhausted. Last error: {last_error}"
+    )

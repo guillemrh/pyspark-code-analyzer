@@ -1,5 +1,5 @@
-# backend/app/routes.py
 # backend/app/api/routes.py
+import os
 from fastapi import APIRouter, HTTPException, Depends
 from uuid import uuid4
 import time
@@ -8,12 +8,13 @@ import logging
 from opentelemetry import trace
 
 
-from ..services.cache import make_cache_key_for_code, get_result, set_result
+from ..services.cache import make_cache_key_for_code, get_result, set_result, redis_client
 from ..workers.tasks import explain_code_task
 from ..config import CACHE_TTL
 from ..rate_limit import rate_limit
 from .schemas import CodeRequest, JobResponse
 from app.telemetry.context import inject_trace_context
+from app.config import settings
 
 from app.metrics import (
     HTTP_REQUESTS_TOTAL,
@@ -160,3 +161,35 @@ async def get_status(job_id: str):
 @router.get("/health")
 async def health():
     return {"status": "ok"}
+
+@router.get("/ready")
+async def ready():
+    # 1) Redis check
+    try:
+        redis_client.ping()
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail="Redis not reachable",
+        )
+
+    # 2) Required env vars check (cheap)
+    required = [
+        "REDIS_URL",
+        "GEMINI_API_KEY",
+    ]
+
+    missing = [k for k in required if not os.getenv(k)]
+    if missing:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Missing env vars: {missing}",
+        )
+
+    return {"status": "ready"}
+
+@router.get("/version")
+async def version():
+    return {
+        "version": settings.app_version,
+    }
