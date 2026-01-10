@@ -1,45 +1,55 @@
-from app.parsers.ast_parser import PySparkASTParser
 import ast
+import textwrap
+from app.parsers.ast_parser import PySparkASTParser
+
+
+def parse_ops(code: str):
+    tree = ast.parse(textwrap.dedent(code))
+    parser = PySparkASTParser()
+    parser.visit(tree)
+    return parser.operations
+
 
 def test_unary_chain():
     code = """
     df2 = df.select("a").filter("b > 1")
     """
-    parser = PySparkASTParser()
-    nodes = parser.parse(code)
+    ops = parse_ops(code)
 
-    select_node = nodes[0]
-    filter_node = nodes[1]
+    select_op = ops[0]
+    filter_op = ops[1]
 
-    assert select_node.operation == "select"
-    assert select_node.parents == ["df"]
-    assert filter_node.operation == "filter"
-    assert filter_node.parents == ["df2"]
+    assert select_op.operation == "select"
+    assert select_op.parents == ["df"]
+
+    assert filter_op.operation == "filter"
+    assert filter_op.parents == ["df2"]
+
 
 def test_multiple_assignments():
     code = """
     df2 = df.select("a")
     df3 = df2.groupBy("a").count()
     """
-    parser = PySparkASTParser()
-    nodes = parser.parse(code)
-    
-    select_node = nodes[0]
-    groupby_node = nodes[1]
-    
-    assert select_node.operation == "select"
-    assert select_node.parents == ["df"]
-    assert groupby_node.operation == "groupBy"
-    assert groupby_node.parents == ["df2"]
+    ops = parse_ops(code)
+
+    select_op = ops[0]
+    groupby_op = ops[1]
+
+    assert select_op.operation == "select"
+    assert select_op.parents == ["df"]
+
+    assert groupby_op.operation == "groupBy"
+    assert groupby_op.parents == ["df2"]
+
 
 def test_join_parsing():
     code = """
     df3 = df1.join(df2, on="id").select("a")
     """
-    parser = PySparkASTParser()
-    nodes = parser.parse(code)
+    ops = parse_ops(code)
 
-    join_node = nodes[0]
+    join_op = ops[0]
 
-    assert join_node.operation == "join"
-    assert set(join_node.parents) == {"df1", "df2"}
+    assert join_op.operation == "join"
+    assert set(join_op.parents) == {"df1", "df2"}
