@@ -23,7 +23,7 @@ def test_unary_chain():
     assert select_op.parents == ["df"]
 
     assert filter_op.operation == "filter"
-    assert filter_op.parents == ["df2"]
+    assert filter_op.parents == ["df"]
 
 
 def test_multiple_assignments():
