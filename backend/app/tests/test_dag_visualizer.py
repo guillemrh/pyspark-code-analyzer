@@ -1,6 +1,6 @@
 # DEPRECATED
 from app.services.dag_service_deprecated import SparkDAG, DAGNode
-from app.visualizers.operation_graph_visualizer import render_dag_to_dot
+from app.visualizers.operation_graph_visualizer import render_operation_dag_to_dot
 
 
 def test_render_simple_dag():
@@ -13,7 +13,7 @@ def test_render_simple_dag():
     dag.add_node(n2)
     dag.add_edge("n1", "n2")
 
-    dot = render_dag_to_dot(dag)
+    dot = render_operation_dag_to_dot(dag)
 
     assert "digraph SparkDAG" in dot
     assert '"n1" -> "n2"' in dot
