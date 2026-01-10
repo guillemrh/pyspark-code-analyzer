@@ -1,16 +1,16 @@
 from app.graphs.operation.operation_graph_builder import build_operation_dag
-from app.parsers.spark_operation import SparkOperation
+from app.parsers.dag_nodes import SparkOperationNode
 
 
 def test_join_dag_construction():
     ops = [
-        SparkOperation(
+        SparkOperationNode(
             df_name="df1",
             operation="select",
             parents=["df"],
             lineno=1,
         ),
-        SparkOperation(
+        SparkOperationNode(
             df_name="df2",
             operation="join",
             parents=["df1", "df_other"],
