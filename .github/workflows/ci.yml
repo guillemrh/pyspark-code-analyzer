@@ -31,5 +31,8 @@ jobs:
           pytest
 
       - name: Build Docker images
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          APP_VERSION: ${{ github.sha }}
         run: |
           docker compose build
