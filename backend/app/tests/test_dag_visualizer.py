@@ -1,19 +1,23 @@
-# DEPRECATED
-from app.services.dag_service_deprecated import SparkDAG, DAGNode
-from app.visualizers.operation_graph_visualizer import render_operation_dag_to_dot
+from app.services.dag_pipeline import run_dag_pipeline
 
 
-def test_render_simple_dag():
-    dag = SparkDAG()
+def test_render_simple_operation_dag():
+    code = """
+    df2 = df.select("a")
+    df3 = df2.filter("a > 1")
+    """
 
-    n1 = DAGNode(id="n1", label="select")
-    n2 = DAGNode(id="n2", label="filter")
+    result = run_dag_pipeline(code)
 
-    dag.add_node(n1)
-    dag.add_node(n2)
-    dag.add_edge("n1", "n2")
+    dot = result["dag_dot"]
 
-    dot = render_operation_dag_to_dot(dag)
-
+    # Graph header
     assert "digraph SparkDAG" in dot
-    assert '"n1" -> "n2"' in dot
+
+    # Nodes
+    assert "select" in dot
+    assert "filter" in dot
+
+    # Edge: select -> filter
+    # We don't hardcode node IDs, but we assert that an edge exists
+    assert "->" in dot
