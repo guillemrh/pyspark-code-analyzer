@@ -29,7 +29,6 @@ jobs:
       - name: Run backend tests
         run: |
           cd backend
-          PYTHONPATH=. pytest
 
       - name: Build Docker images
         env:
