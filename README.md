@@ -21,6 +21,26 @@ The platform is designed with **scalability, observability, and fault tolerance*
 
 ---
 
+## Why this project matters
+
+This project demonstrates my ability to:
+- Design distributed, observable backend systems
+- Analyze non-trivial code semantics (AST → DAG → lineage)
+- Build production-grade async pipelines
+- Apply CI, testing, and operational best practices
+
+---
+
+## Key Design Decisions
+
+- **Async via Celery**: Decouples API latency from heavy analysis workloads
+- **Redis as shared state**: Enables caching, rate limiting, and job tracking
+- **Operation DAG abstraction**: Separates logical Spark semantics from visualization
+- **Structured logs + metrics**: Enables post-mortem debugging and capacity planning
+
+
+---
+
 ## High-Level Architecture
 
 The system follows a **request → cache → async execution → aggregation** model:
@@ -30,19 +50,6 @@ The system follows a **request → cache → async execution → aggregation** m
 - Celery workers execute CPU- and LLM-heavy tasks
 - Streamlit provides an interactive UI
 - Prometheus and structured logs provide observability
-
----
-
-## Core Capabilities
-
-- 🔍 Static analysis of PySpark code via AST parsing
-- 🧠 Logical DAG construction (transformations & actions)
-- 🧬 Data lineage graph generation
-- ⚠️ Detection of Spark performance anti-patterns
-- 🤖 LLM-powered explanations with fallback models
-- ♻️ Redis-backed caching for LLM and analysis results
-- 📊 Structured logging and metrics (production-ready)
-- 🧵 Asynchronous execution with Celery workers
 
 ---
 
@@ -120,12 +127,7 @@ The system follows a **request → cache → async execution → aggregation** m
 
 ### Environment Configuration
 
-Create a `.env` file in `backend/` with:
-
-- `GEMINI_API_KEY`
-- `GEMINI_MODEL`
-- `GEMINI_FALLBACK_MODEL`
-- `REDIS_URL`
+Follow the `.env.example` to create a `.env` file with your variables values.
 
 ---
 
@@ -135,27 +137,7 @@ Create a `.env` file in `backend/` with:
 - Streamlit UI: http://localhost:8501
 - FastAPI backend: http://localhost:8000
 - Prometheus metrics: http://localhost:8000/metrics
-
----
-
-## API Overview
-
-### POST /explain/pyspark
-
-Submits PySpark code for analysis.
-
-- Performs syntax validation
-- Checks Redis cache
-- Enqueues Celery job if needed
-
-### GET /status/{job_id}
-
-Returns job status and results, including:
-
-- LLM explanation
-- DAG and lineage graphs
-- Stage summaries
-- Anti-pattern detection
+- Jaeger UI: http://localhost:16686
 
 ---
 
@@ -176,19 +158,6 @@ Returns job status and results, including:
 - End-to-end request tracing via OpenTelemetry
 
 ---
-
-## Technology Stack
-
-| Layer | Tools |
-|----|----|
-| API | FastAPI, Pydantic |
-| Async | Celery |
-| Cache & State | Redis |
-| Frontend | Streamlit |
-| LLM | Gemini (with fallback models) |
-| Observability | Structured logs, Prometheus |
-| Infra | Docker, Docker Compose |
-
 
 ## Project Roadmap
 
