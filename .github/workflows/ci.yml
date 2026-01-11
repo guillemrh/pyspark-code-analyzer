@@ -29,6 +29,12 @@ jobs:
         run: |
           cd backend
 
+      - name: Run linting
+        run: |
+          cd backend
+          ruff check app
+          black --check app
+
       - name: Build Docker images
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
