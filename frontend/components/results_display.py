@@ -76,10 +76,6 @@ def render_dag_tab(analysis: dict) -> None:
 
     if dag_dot:
         render_dag_graph(dag_dot)
-
-        # Show raw DOT in expander
-        with st.expander("View DOT Source"):
-            st.code(dag_dot, language="dot")
     else:
         st.info("No DAG data available")
 
@@ -90,10 +86,6 @@ def render_lineage_tab(analysis: dict) -> None:
 
     if lineage_dot:
         render_lineage_graph(lineage_dot)
-
-        # Show raw DOT in expander
-        with st.expander("View DOT Source"):
-            st.code(lineage_dot, language="dot")
     else:
         st.info("No lineage data available")
 
