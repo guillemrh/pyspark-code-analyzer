@@ -1,8 +1,10 @@
 from pydantic import BaseModel
 from typing import Optional
 
+
 class CodeRequest(BaseModel):
     code: str
+
 
 class ExplanationResult(BaseModel):
     explanation: str | None = None
@@ -11,12 +13,14 @@ class ExplanationResult(BaseModel):
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
     error: str | None = None
-    
+
+
 class JobResponse(BaseModel):
     job_id: str
     status: str
     cached: bool = False
-    
+
+
 class ExplanationResponse(BaseModel):
     job_id: str
     status: str

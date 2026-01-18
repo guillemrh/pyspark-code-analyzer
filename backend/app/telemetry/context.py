@@ -1,4 +1,4 @@
-from opentelemetry import context, propagate
+from opentelemetry import propagate
 
 
 def inject_trace_context(carrier: dict):

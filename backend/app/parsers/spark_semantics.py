@@ -1,12 +1,15 @@
 from enum import Enum
 
+
 class OpType(str, Enum):
     TRANSFORMATION = "transformation"
     ACTION = "action"
 
+
 class DependencyType(str, Enum):
     NARROW = "narrow"
     WIDE = "wide"
+
 
 SHUFFLE_OPS = {
     "groupBy",
@@ -14,7 +17,7 @@ SHUFFLE_OPS = {
     "distinct",
     "repartition",
 }
-    
+
 # Canonical Spark operation registry
 SPARK_OPS = {
     # Transformations
@@ -27,7 +30,6 @@ SPARK_OPS = {
     "drop": OpType.TRANSFORMATION,
     "repartition": OpType.TRANSFORMATION,
     "coalesce": OpType.TRANSFORMATION,
-
     # Actions
     "count": OpType.ACTION,
     "collect": OpType.ACTION,

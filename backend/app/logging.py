@@ -31,6 +31,4 @@ def setup_logging(service_name: str):
     root.addHandler(handler)
 
     # Attach service name to all logs
-    logging.LoggerAdapter(
-        root, {"service": service_name}
-    )
+    logging.LoggerAdapter(root, {"service": service_name})

@@ -2,7 +2,8 @@ from __future__ import annotations
 from app.parsers.spark_semantics import DependencyType
 from collections import deque
 from app.graphs.operation.operation_graph_builder import OperationDAG
-    
+
+
 def topological_sort(dag: OperationDAG):
     """
     Returns nodes in topological order (parents before children)
@@ -32,7 +33,7 @@ def assign_stages(dag: OperationDAG) -> OperationDAG:
     - Start at stage 0
     - Increment stage whenever a node has a WIDE dependency
     """
-    
+
     stage_id = 0
     nodes_in_order = topological_sort(dag)
 
@@ -52,5 +53,5 @@ def assign_stages(dag: OperationDAG) -> OperationDAG:
 
         if node.dependency_type == DependencyType.WIDE:
             node.stage_id += 1
-            
+
     return dag

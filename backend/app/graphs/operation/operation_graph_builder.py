@@ -2,10 +2,12 @@ from typing import List, Dict
 from app.parsers.dag_nodes import SparkOperationNode
 from app.parsers.spark_semantics import OpType, DependencyType, SHUFFLE_OPS
 
+
 class OperationDAGNode:
     """
     Represents a single Spark operation in the execution DAG
     """
+
     def __init__(
         self,
         id: str,
@@ -31,6 +33,7 @@ class OperationDAG:
     """
     Pure execution DAG (operation → operation)
     """
+
     def __init__(self):
         self.nodes: Dict[str, OperationDAGNode] = {}
 
@@ -54,7 +57,7 @@ def build_operation_dag(
     - Parents MUST be operation IDs (not DataFrame names)
     """
     dag = OperationDAG()
-    
+
     # Track last operation producing each DataFrame
     df_last_op: Dict[str, str] = {}
     assignment_last_op: Dict[int, str] = {}

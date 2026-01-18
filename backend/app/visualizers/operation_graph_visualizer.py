@@ -1,6 +1,6 @@
-import attrs
 from app.graphs.operation.operation_graph_builder import OperationDAG
 from app.parsers.spark_semantics import OpType, DependencyType
+
 
 def render_operation_dag_to_dot(dag: OperationDAG) -> str:
     """
@@ -12,7 +12,7 @@ def render_operation_dag_to_dot(dag: OperationDAG) -> str:
     - Where are actions?
     - Where are shuffles?
     """
-    
+
     lines = [
         "digraph SparkDAG {",
         "  rankdir=LR;",
@@ -27,7 +27,7 @@ def render_operation_dag_to_dot(dag: OperationDAG) -> str:
         # Actions as boxes
         if node.op_type == OpType.ACTION:
             attrs.append("shape=box")
-            
+
         if node.dependency_type == DependencyType.WIDE:
             attrs.append("penwidth=2")
 

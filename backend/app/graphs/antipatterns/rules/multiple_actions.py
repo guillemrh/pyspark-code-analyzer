@@ -9,10 +9,7 @@ class MultipleActionsRule(AntiPatternRule):
     def detect(self, dag):
         findings = []
 
-        actions = [
-            node for node in dag.nodes.values()
-            if node.op_type == OpType.ACTION
-        ]
+        actions = [node for node in dag.nodes.values() if node.op_type == OpType.ACTION]
 
         lineage_map = {}
 

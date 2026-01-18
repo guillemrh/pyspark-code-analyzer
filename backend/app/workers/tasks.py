@@ -31,12 +31,18 @@ celery = Celery(
     backend=settings.redis_url,
 )
 
+
 @celery.task(
     bind=True,
     autoretry_for=(),
 )
-
-def explain_code_task(self, job_id: str, code: str, cache_key: str, trace_ctx: dict | None = None,):
+def explain_code_task(
+    self,
+    job_id: str,
+    code: str,
+    cache_key: str,
+    trace_ctx: dict | None = None,
+):
     """
     Background task that:
     1. Executes the LLM call
@@ -54,10 +60,10 @@ def explain_code_task(self, job_id: str, code: str, cache_key: str, trace_ctx: d
             "job_id": job_id,
             "component": "celery_worker",
         },
-    ):    
+    ):
         # Update job status to running
         job_key = f"job:{job_id}"
-        
+
         def update(status, result=None):
             set_result(
                 job_key,
@@ -69,7 +75,7 @@ def explain_code_task(self, job_id: str, code: str, cache_key: str, trace_ctx: d
                 },
                 ttl=CACHE_TTL,
             )
-            
+
         logger.info(
             "task_started",
             extra={
@@ -78,16 +84,16 @@ def explain_code_task(self, job_id: str, code: str, cache_key: str, trace_ctx: d
                 "component": "celery_worker",
             },
         )
-        
+
         JOBS_STARTED_TOTAL.inc()
         task_start = time.time()
 
         update("running")
-        
+
         # simulate queue / scheduling delay
         time.sleep(1)
-        
-        try: 
+
+        try:
             # --- DAG / Analysis ---
             # Build DAG and generate DOT representation
             dag_result = run_dag_pipeline(code)
@@ -99,9 +105,9 @@ def explain_code_task(self, job_id: str, code: str, cache_key: str, trace_ctx: d
                 {
                     "analysis": dag_result,
                     "llm": None,
-                }
+                },
             )
-            
+
             # --- LLM ---
             llm_result = explain_with_fallback(code)
 
@@ -116,9 +122,9 @@ def explain_code_task(self, job_id: str, code: str, cache_key: str, trace_ctx: d
                     "llm": llm_result,
                 },
             )
-            
+
             job_duration_ms = int((time.time() - task_start) * 1000)
-            
+
             logger.info(
                 "task_finished",
                 extra={
@@ -141,14 +147,14 @@ def explain_code_task(self, job_id: str, code: str, cache_key: str, trace_ctx: d
             )
 
             update(
-                    "failed",
-                    {
-                        "error": {
-                            "type": type(e).__name__,
-                            "message": str(e),
-                        }
-                    },
-                )
+                "failed",
+                {
+                    "error": {
+                        "type": type(e).__name__,
+                        "message": str(e),
+                    }
+                },
+            )
 
         job_payload = {
             "job_id": job_id,
@@ -156,9 +162,7 @@ def explain_code_task(self, job_id: str, code: str, cache_key: str, trace_ctx: d
             "job_duration_ms": job_duration_ms,
             "cached": False,
         }
-        
-        JOB_DURATION_SECONDS.observe(
-        time.time() - task_start
-        )
+
+        JOB_DURATION_SECONDS.observe(time.time() - task_start)
 
         return job_payload

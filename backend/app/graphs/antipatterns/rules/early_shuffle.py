@@ -7,6 +7,7 @@ class EarlyShuffleRule(AntiPatternRule):
     Detects shuffles occurring early in a lineage.
     Note: Uses logical stage ordering, not Spark runtime stages.
     """
+
     rule_id = "EARLY_SHUFFLE"
     severity = "HIGH"
 
@@ -17,7 +18,7 @@ class EarlyShuffleRule(AntiPatternRule):
             # Shuffle = wide dependency
             if node.dependency_type != DependencyType.WIDE:
                 continue
-            
+
             # Early = happens in stage 0 or 1
             parent_stages = [
                 dag.nodes[p].stage_id

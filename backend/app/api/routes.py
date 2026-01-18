@@ -8,7 +8,12 @@ import logging
 from opentelemetry import trace
 
 
-from ..services.cache import make_cache_key_for_code, get_result, set_result, redis_client
+from ..services.cache import (
+    make_cache_key_for_code,
+    get_result,
+    set_result,
+    redis_client,
+)
 from ..workers.tasks import explain_code_task
 from ..config import CACHE_TTL
 from ..rate_limit import rate_limit
@@ -23,7 +28,6 @@ from app.metrics import (
     CACHE_MISS_TOTAL,
 )
 
-
 router = APIRouter()
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -36,9 +40,9 @@ tracer = trace.get_tracer(__name__)
 )
 async def explain_pyspark(request: CodeRequest):
     start = time.time()
-    status = "error" 
+    status = "error"
     endpoint = "/explain/pyspark"
-    
+
     logger.info(
         "request_received",
         extra={
@@ -64,17 +68,17 @@ async def explain_pyspark(request: CodeRequest):
                 "offset": e.offset,
             },
         )
-    
+
     # 2) Check cache
-    try: 
+    try:
         cache_key = make_cache_key_for_code(code)
         with tracer.start_as_current_span("cache_lookup"):
             cached = get_result(cache_key)
-        
+
         if cached:
             CACHE_HIT_TOTAL.inc()
             status = "cached"
-            
+
             logger.info(
                 "cache_hit",
                 extra={
@@ -97,34 +101,30 @@ async def explain_pyspark(request: CodeRequest):
                 "job_duration_ms": 0,
                 "cached": True,
             }
-            
+
             set_result(f"job:{cache_job_id}", payload, ttl=CACHE_TTL)
 
-            return {
-                "job_id": cache_job_id,
-                "status": "finished",
-                "cached": True
-            }
+            return {"job_id": cache_job_id, "status": "finished", "cached": True}
         # 3) Enqueue background job
         CACHE_MISS_TOTAL.inc()
         status = "queued"
-        
+
         trace_ctx = {}
         inject_trace_context(trace_ctx)
 
         job_id = str(uuid4())
         with tracer.start_as_current_span("enqueue_job"):
             explain_code_task.apply_async(
-                        kwargs={
-                            "job_id": job_id,
-                            "code": code,
-                            "cache_key": cache_key,
-                            "trace_ctx": trace_ctx,
-                        }
-                    )  
-        
+                kwargs={
+                    "job_id": job_id,
+                    "code": code,
+                    "cache_key": cache_key,
+                    "trace_ctx": trace_ctx,
+                }
+            )
+
         return {"job_id": job_id, "status": "pending", "cached": False}
-    
+
     finally:
         # 4) Metrics
         HTTP_REQUESTS_TOTAL.labels(
@@ -137,18 +137,19 @@ async def explain_pyspark(request: CodeRequest):
             endpoint=endpoint,
         ).observe(time.time() - start)
 
+
 @router.get("/status/{job_id}")
 async def get_status(job_id: str):
     job_key = f"job:{job_id}"
     payload = get_result(job_key)
-    
+
     if not payload:
         return {
             "job_id": job_id,
             "status": "pending",
             "result": None,
             "job_duration_ms": None,
-            "cached": False
+            "cached": False,
         }
     return {
         "job_id": payload.get("job_id"),
@@ -158,16 +159,18 @@ async def get_status(job_id: str):
         "cached": payload.get("cached", False),
     }
 
+
 @router.get("/health")
 async def health():
     return {"status": "ok"}
+
 
 @router.get("/ready")
 async def ready():
     # 1) Redis check
     try:
         redis_client.ping()
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=503,
             detail="Redis not reachable",
@@ -187,6 +190,7 @@ async def ready():
         )
 
     return {"status": "ready"}
+
 
 @router.get("/version")
 async def version():

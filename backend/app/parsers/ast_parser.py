@@ -11,7 +11,7 @@ class PySparkASTParser(ast.NodeVisitor):
     AST parser that extracts Spark DataFrame operations
     from single-file PySpark scripts.
     """
-    
+
     MULTI_PARENT_OPS = {"join", "union", "unionAll", "intersect", "except"}
 
     def __init__(self):
@@ -23,25 +23,25 @@ class PySparkASTParser(ast.NodeVisitor):
         Handles patterns like:
         df2 = df1.select(...).filter(...)
         """
-        
-        # Checking if the right-hand side of the assignment (node.value) is a function call (ast.Call). 
+
+        # Checking if the right-hand side of the assignment (node.value) is a function call (ast.Call).
         # If it is not, the method exits early
         if not isinstance(node.value, ast.Call):
             return
 
-        # Ensures that the left-hand side of the assignment (node.targets[0]) is a simple variable name (ast.Name). 
+        # Ensures that the left-hand side of the assignment (node.targets[0]) is a simple variable name (ast.Name).
         # This restriction ensures that only straightforward assignments like df2 = ... are processed, excluding more complex patterns like tuple unpacking.
         if not isinstance(node.targets[0], ast.Name):
             return
 
         # Variable name on the left-hand side of the assignment
         target_df = node.targets[0].id
-        
+
         # Invoked on the right-hand side of the assignment to retrieve the sequence of method calls
         call_chain = self._extract_call_chain(node.value)
         if not call_chain:
             return
-        
+
         # Iterates over the extracted call chain, creating a SparkOperationNode for each operation
         for idx, call in enumerate(call_chain):
             # Generate a unique node ID for each operation
@@ -60,9 +60,9 @@ class PySparkASTParser(ast.NodeVisitor):
             )
 
             self.operations.append(op_node)
-            
+
         # It ensures that the traversal of the AST continues for any child nodes of the current node
-        # Example: df2 = df1.select("col1").filter("col2 > 10") 
+        # Example: df2 = df1.select("col1").filter("col2 > 10")
         # Here, filter is a child node of the select call
         self.generic_visit(node)
 
@@ -82,7 +82,7 @@ class PySparkASTParser(ast.NodeVisitor):
         current = call  # starts as the call node (e.g., the filter or join call)
         base_df = None  # Tracks the base DataFrame for the entire chain
         tmp = current
-        
+
         while isinstance(tmp, ast.Call):
             if isinstance(tmp.func, ast.Attribute):
                 if isinstance(tmp.func.value, ast.Name):
@@ -91,14 +91,16 @@ class PySparkASTParser(ast.NodeVisitor):
                 tmp = tmp.func.value
             else:
                 break
-            
+
         while isinstance(current, ast.Call):
             if isinstance(current.func, ast.Attribute):
-                op_name = current.func.attr  # represents the method (select, filter, join, etc.)
+                op_name = (
+                    current.func.attr
+                )  # represents the method (select, filter, join, etc.)
 
                 # Default parent extraction (unary operations)
                 parents = []
-                
+
                 # Detect base DataFrame only once
                 if base_df is None:
                     if isinstance(current.func.value, ast.Name):

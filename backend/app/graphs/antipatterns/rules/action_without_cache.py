@@ -22,10 +22,7 @@ class ActionWithoutCacheRule(AntiPatternRule):
             ancestors = self._get_ancestors(dag, node.id)
 
             # If any ancestor has multiple children, lineage is reused
-            reused = any(
-                len(dag.nodes[a].children) > 1
-                for a in ancestors
-            )
+            reused = any(len(dag.nodes[a].children) > 1 for a in ancestors)
 
             if reused:
                 findings.append(

@@ -1,5 +1,4 @@
 # backend/app/main.py
-import logging
 from fastapi import FastAPI, Response
 
 from .api.routes import router
@@ -16,9 +15,11 @@ app.include_router(router)
 tracer = setup_tracing("pyspark-llm-backend")
 FastAPIInstrumentor.instrument_app(app)
 
+
 @app.get("/")
 def root():
     return {"message": "PySpark LLM Explainer API running"}
+
 
 @app.get("/metrics")
 def metrics():

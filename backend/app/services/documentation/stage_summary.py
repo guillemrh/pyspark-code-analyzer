@@ -57,9 +57,7 @@ def stage_summary_markdown(summary: Dict[str, Any]) -> str:
         lines.append(
             f"- Wide dependencies: {', '.join(stage['wide_operations']) or 'None'}"
         )
-        lines.append(
-            f"- Nodes: {', '.join(stage['operations'])}"
-        )
+        lines.append(f"- Nodes: {', '.join(stage['operations'])}")
         lines.append("")
 
     return "\n".join(lines)

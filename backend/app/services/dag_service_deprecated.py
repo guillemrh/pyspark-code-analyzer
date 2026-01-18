@@ -2,18 +2,22 @@
 
 from app.parsers.dag_nodes import SparkOperationNode
 
+
 # This class represents a single node in the DAG and tracks its relationships with other operations
 class DAGNode:
     def __init__(self, id, label):
         self.id = id
         self.label = label
         self.parents = set()
-        self.children = set() # set of child node IDs that depend on this node
+        self.children = set()  # set of child node IDs that depend on this node
+
 
 # This class represents the entire DAG structure to store and manage the relationships between operations
 class SparkDAG:
     def __init__(self):
-        self.nodes = {} # A dictionary where the keys are node IDs and the values are DAGNode objects
+        self.nodes = (
+            {}
+        )  # A dictionary where the keys are node IDs and the values are DAGNode objects
 
     def add_node(self, node: DAGNode):
         self.nodes[node.id] = node
@@ -25,7 +29,7 @@ class SparkDAG:
 
 def build_dag(operations: list[SparkOperationNode]) -> SparkDAG:
     """
-    This function constructs a SparkDAG from a list of SparkOperationNode objects. 
+    This function constructs a SparkDAG from a list of SparkOperationNode objects.
     Each SparkOperationNode represents a Spark operation extracted from the AST
     """
     # Initialize the DAG
@@ -36,10 +40,7 @@ def build_dag(operations: list[SparkOperationNode]) -> SparkDAG:
 
     for op in operations:
         # For each SparkOperationNode in the list, a corresponding DAGNode is created.
-        dag_node = DAGNode(
-            id=op.id,
-            label=op.operation
-        )
+        dag_node = DAGNode(id=op.id, label=op.operation)
         dag.add_node(dag_node)
 
         # Connect parents
@@ -52,7 +53,9 @@ def build_dag(operations: list[SparkOperationNode]) -> SparkDAG:
 
     return dag
 
+
 SHUFFLE_OPS = {"join", "groupBy", "repartition", "distinct"}
+
 
 def annotate_shuffles(dag: SparkDAG, operations: list[SparkOperationNode]):
     """

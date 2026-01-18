@@ -24,14 +24,8 @@ def test_join_dag_construction():
 
     assert len(dag.nodes) == 2
 
-    join_node = next(
-        node for node in dag.nodes.values()
-        if node.label == "join"
-    )
+    join_node = next(node for node in dag.nodes.values() if node.label == "join")
 
-    parent_labels = {
-        dag.nodes[parent_id].label
-        for parent_id in join_node.parents
-    }
+    parent_labels = {dag.nodes[parent_id].label for parent_id in join_node.parents}
 
     assert "select" in parent_labels

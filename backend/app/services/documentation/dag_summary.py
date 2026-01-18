@@ -13,29 +13,16 @@ def dag_summary_json(dag: OperationDAG) -> Dict[str, Any]:
 
     total_nodes = len(nodes)
 
-    transformations = sum(
-        1 for n in nodes if n.op_type == OpType.TRANSFORMATION
-    )
-    actions = sum(
-        1 for n in nodes if n.op_type == OpType.ACTION
-    )
+    transformations = sum(1 for n in nodes if n.op_type == OpType.TRANSFORMATION)
+    actions = sum(1 for n in nodes if n.op_type == OpType.ACTION)
 
-    wide_ops = sum(
-        1 for n in nodes if n.dependency_type == DependencyType.WIDE
-    )
+    wide_ops = sum(1 for n in nodes if n.dependency_type == DependencyType.WIDE)
 
-    root_nodes = [
-        n.id for n in nodes if not n.parents
-    ]
+    root_nodes = [n.id for n in nodes if not n.parents]
 
-    leaf_nodes = [
-        n.id for n in nodes if not n.children
-    ]
+    leaf_nodes = [n.id for n in nodes if not n.children]
 
-    max_stage = max(
-        (n.stage_id for n in nodes if n.stage_id is not None),
-        default=0
-    )
+    max_stage = max((n.stage_id for n in nodes if n.stage_id is not None), default=0)
 
     return {
         "total_operations": total_nodes,
