@@ -1,9 +1,17 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 
 
 class CodeRequest(BaseModel):
-    code: str
+    code: str = Field(..., min_length=1, max_length=100_000)
+
+    @field_validator("code")
+    @classmethod
+    def validate_code_not_empty(cls, v: str) -> str:
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("Code cannot be empty or whitespace only")
+        return stripped
 
 
 class ExplanationResult(BaseModel):

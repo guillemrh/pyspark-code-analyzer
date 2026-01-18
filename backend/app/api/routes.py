@@ -12,6 +12,7 @@ from ..services.cache import (
     make_cache_key_for_code,
     get_result,
     set_result,
+    get_or_set_job,
     redis_client,
 )
 from ..workers.tasks import explain_code_task
@@ -113,15 +114,28 @@ async def explain_pyspark(request: CodeRequest):
         inject_trace_context(trace_ctx)
 
         job_id = str(uuid4())
-        with tracer.start_as_current_span("enqueue_job"):
-            explain_code_task.apply_async(
-                kwargs={
-                    "job_id": job_id,
-                    "code": code,
-                    "cache_key": cache_key,
-                    "trace_ctx": trace_ctx,
-                }
-            )
+        job_key = f"job:{job_id}"
+
+        # Atomically create job entry to prevent duplicate processing
+        initial_job = {
+            "job_id": job_id,
+            "status": "pending",
+            "result": None,
+            "cached": False,
+        }
+
+        _, created = get_or_set_job(job_key, initial_job, ttl=CACHE_TTL)
+
+        if created:
+            with tracer.start_as_current_span("enqueue_job"):
+                explain_code_task.apply_async(
+                    kwargs={
+                        "job_id": job_id,
+                        "code": code,
+                        "cache_key": cache_key,
+                        "trace_ctx": trace_ctx,
+                    }
+                )
 
         return {"job_id": job_id, "status": "pending", "cached": False}
 

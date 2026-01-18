@@ -28,6 +28,7 @@ jobs:
       - name: Run backend tests
         run: |
           cd backend
+          pytest app/tests -v --tb=short
 
       - name: Run linting
         run: |

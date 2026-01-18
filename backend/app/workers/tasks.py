@@ -4,7 +4,7 @@ from celery import Celery
 from celery.utils.log import get_task_logger
 
 from ..config import settings, CACHE_TTL
-from app.services.llm import explain_with_fallback
+from app.services.llm import explain_with_fallback, LLMRateLimitError
 from ..services.cache import set_result
 from ..services.dag_pipeline import run_dag_pipeline
 
@@ -34,7 +34,11 @@ celery = Celery(
 
 @celery.task(
     bind=True,
-    autoretry_for=(),
+    autoretry_for=(LLMRateLimitError,),
+    retry_backoff=True,
+    retry_backoff_max=300,
+    retry_kwargs={"max_retries": 3},
+    retry_jitter=True,
 )
 def explain_code_task(
     self,
@@ -87,11 +91,9 @@ def explain_code_task(
 
         JOBS_STARTED_TOTAL.inc()
         task_start = time.time()
+        job_duration_ms = 0
 
         update("running")
-
-        # simulate queue / scheduling delay
-        time.sleep(1)
 
         try:
             # --- DAG / Analysis ---
@@ -135,7 +137,22 @@ def explain_code_task(
                 },
             )
 
+        except LLMRateLimitError:
+            # Rate limit - will be retried automatically by Celery
+            job_duration_ms = int((time.time() - task_start) * 1000)
+            logger.warning(
+                "task_rate_limited",
+                extra={
+                    "event": "task_rate_limited",
+                    "job_id": job_id,
+                    "retry": self.request.retries,
+                    "component": "celery_worker",
+                },
+            )
+            raise  # Let Celery handle retry
+
         except Exception as e:
+            job_duration_ms = int((time.time() - task_start) * 1000)
             JOBS_FAILED_TOTAL.inc()
             logger.exception(
                 "task_failed",
@@ -156,13 +173,11 @@ def explain_code_task(
                 },
             )
 
-        job_payload = {
+        JOB_DURATION_SECONDS.observe(time.time() - task_start)
+
+        return {
             "job_id": job_id,
             "status": "finished",
             "job_duration_ms": job_duration_ms,
             "cached": False,
         }
-
-        JOB_DURATION_SECONDS.observe(time.time() - task_start)
-
-        return job_payload
