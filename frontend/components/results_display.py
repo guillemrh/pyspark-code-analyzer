@@ -127,40 +127,52 @@ def render_antipatterns_tab(analysis: dict) -> None:
         return
 
     markdown = antipatterns.get("markdown", "")
-    issues = antipatterns.get("json", {}).get("issues", [])
+    json_data = antipatterns.get("json", {})
 
-    if not issues and not markdown:
+    # Get total issues from JSON structure
+    total_issues = json_data.get("total_issues", 0)
+    by_rule = json_data.get("by_rule", {})
+
+    if total_issues == 0 and not markdown:
         st.success("No anti-patterns detected! Your code looks good.")
         return
 
     # Summary
-    st.markdown(f"**Found {len(issues)} potential issue(s)**")
+    st.markdown(f"**Found {total_issues} potential issue(s)**")
+
+    # Show severity breakdown if available
+    by_severity = json_data.get("by_severity", {})
+    if by_severity:
+        severity_parts = [f"{sev}: {count}" for sev, count in by_severity.items()]
+        st.caption(f"By severity: {', '.join(severity_parts)}")
+
     st.divider()
 
-    # If we have structured issues, display as cards
-    if issues:
-        for i, issue in enumerate(issues):
-            severity = issue.get("severity", "info")
-            severity_color = {
-                "error": "red",
-                "warning": "orange",
-                "info": "blue",
-            }.get(severity, "gray")
+    # Display issues grouped by rule
+    if by_rule:
+        issue_idx = 0
+        for rule_id, issues in by_rule.items():
+            for issue in issues:
+                severity = issue.get("severity", "info")
+                severity_color = {
+                    "error": "red",
+                    "warning": "orange",
+                    "info": "blue",
+                }.get(severity, "gray")
 
-            with st.expander(
-                f"**{issue.get('rule', 'Issue')}** - {issue.get('message', 'No details')}",
-                expanded=(i == 0),
-            ):
-                st.markdown(f"**Severity:** :{severity_color}[{severity.upper()}]")
+                message = issue.get("message", "No details")
+                nodes = issue.get("nodes", [])
 
-                if issue.get("location"):
-                    st.markdown(f"**Location:** `{issue['location']}`")
+                with st.expander(
+                    f"**{rule_id}** - {message}",
+                    expanded=(issue_idx == 0),
+                ):
+                    st.markdown(f"**Severity:** :{severity_color}[{severity.upper()}]")
 
-                if issue.get("suggestion"):
-                    st.markdown(f"**Suggestion:** {issue['suggestion']}")
+                    if nodes:
+                        st.markdown(f"**Affected nodes:** `{', '.join(nodes)}`")
 
-                if issue.get("details"):
-                    st.markdown(f"**Details:** {issue['details']}")
+                issue_idx += 1
     elif markdown:
         # Fallback to markdown display
         st.markdown(markdown)
