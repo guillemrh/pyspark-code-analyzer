@@ -1,143 +1,146 @@
+"""
+PySpark Intelligence Platform - Streamlit Frontend
+
+A professional UI for analyzing PySpark code through AST parsing,
+DAG visualization, and LLM-powered explanations.
+"""
+
 import streamlit as st
-import requests
-import time
-import os
 
-BACKEND_BASE = os.getenv("BACKEND_URL", "http://backend:8000")
+from components.code_editor import render_code_editor, render_sidebar_examples
+from components.job_status import (
+    render_job_status,
+    render_job_history,
+    add_to_history,
+)
+from components.results_display import render_results, render_error
+from utils.api_client import APIClient
 
-# Polling configuration
-MAX_POLL_TIME = 120  # 2 minutes max
-MAX_ATTEMPTS = 60
-BASE_DELAY = 1.0
-MAX_DELAY = 5.0
 
-st.title("PySpark Intelligence Platform")
+# Page configuration
+st.set_page_config(
+    page_title="PySpark Intelligence Platform",
+    page_icon="🔍",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-code = st.text_area("PySpark code")
 
-if st.button("Explain"):
-    # 1. Submit job
-    try:
-        r = requests.post(
-            f"{BACKEND_BASE}/explain/pyspark",
-            json={"code": code},
-            timeout=10,
+def init_session_state():
+    """Initialize session state variables."""
+    defaults = {
+        "code": "",
+        "job_id": None,
+        "job_status": None,
+        "results": None,
+        "history": [],
+        "api_client": APIClient(),
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+
+def main():
+    """Main application entry point."""
+    init_session_state()
+
+    # Header
+    st.title("🔍 PySpark Intelligence Platform")
+    st.caption(
+        "Analyze your PySpark code with AST parsing, DAG visualization, "
+        "and AI-powered explanations"
+    )
+
+    # Sidebar content (ordered top to bottom)
+    with st.sidebar:
+        render_sidebar_examples()
+        st.divider()
+        render_job_history()
+
+    # Main content: code editor
+    code = render_code_editor()
+
+    # Explain button below editor
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        explain_clicked = st.button(
+            "Explain Code",
+            type="primary",
+            use_container_width=True,
+            disabled=not code.strip(),
         )
-    except requests.exceptions.RequestException as e:
-        st.error(f"Failed to connect to backend: {e}")
-        st.stop()
 
-    if r.status_code != 200:
-        try:
-            data = r.json()
-            st.error(f"Request failed: {data}")
-        except Exception:
-            st.error(f"Request failed. Status={r.status_code}, body={r.text}")
-        st.stop()
+    # Handle submission
+    if explain_clicked and code.strip():
+        handle_submission(code)
 
-    data = r.json()
-    job_id = data["job_id"]
+    # Display results
+    st.divider()
 
-    st.info(f"Job queued: {job_id}")
+    if st.session_state.results:
+        render_results(st.session_state.results)
+    else:
+        st.info(
+            "Enter your PySpark code above and click **Explain Code** to get started."
+        )
 
-    # 2. Poll status with timeout and exponential backoff
-    with st.spinner("Waiting for result..."):
-        start_time = time.time()
-        attempt = 0
-        delay = BASE_DELAY
 
-        while attempt < MAX_ATTEMPTS:
-            elapsed = time.time() - start_time
-            if elapsed > MAX_POLL_TIME:
-                st.error(
-                    f"Request timed out after {MAX_POLL_TIME} seconds. Job ID: {job_id}"
-                )
-                st.info(
-                    "The job may still be processing. Try refreshing with the same code later."
-                )
-                break
+def handle_submission(code: str):
+    """Handle code submission and job polling."""
+    api_client = st.session_state.api_client
 
-            try:
-                resp = requests.get(
-                    f"{BACKEND_BASE}/status/{job_id}",
-                    timeout=10,
-                )
-                resp.raise_for_status()
-                j = resp.json()
-            except requests.exceptions.RequestException as e:
-                st.warning(f"Connection error (attempt {attempt + 1}): {e}")
-                attempt += 1
-                time.sleep(delay)
-                delay = min(delay * 1.5, MAX_DELAY)
-                continue
-            except Exception as e:
-                st.error(f"Unexpected error: {e}")
-                break
+    # Clear previous results
+    st.session_state.results = None
+    st.session_state.job_id = None
+    st.session_state.job_status = None
 
-            status = j.get("status")
+    # Submit job
+    with st.spinner("Submitting job..."):
+        response = api_client.submit_job(code)
 
-            if status == "finished":
-                result = j.get("result")
+    if not response.success:
+        st.error(f"Failed to submit job: {response.error}")
+        return
 
-                if not result:
-                    st.error("No result returned.")
-                    break
+    job_id = response.job_id
+    st.session_state.job_id = job_id
+    add_to_history(job_id, "pending")
 
-                llm = result.get("llm", {})
-                analysis = result.get("analysis", {})
+    st.info(f"Job submitted: `{job_id}`")
 
-                # --- LLM ---
-                st.subheader("Explanation")
-                st.write(llm.get("explanation"))
+    # Poll for results
+    final_status = render_job_status(job_id, api_client)
 
-                st.caption(
-                    f"Tokens: {llm.get('tokens_used')} | "
-                    f"Model latency: {llm.get('latency_ms')} ms | "
-                    f"Job duration: {j.get('job_duration_ms')} ms"
-                )
+    if final_status is None:
+        # Cancelled
+        add_to_history(job_id, "cancelled")
+        return
 
-                # --- DAG ---
-                st.subheader("Operation DAG")
-                if "dag_dot" in analysis:
-                    st.graphviz_chart(analysis["dag_dot"])
+    # Update history and state
+    add_to_history(job_id, final_status.status)
+    st.session_state.job_status = final_status.status
 
-                # --- Lineage ---
-                st.subheader("Data Lineage")
-                if "lineage_dot" in analysis:
-                    st.graphviz_chart(analysis["lineage_dot"])
+    if final_status.status == "finished":
+        st.session_state.results = final_status.result
+        st.success("Analysis complete!")
+        st.rerun()
 
-                # --- Stage Summary ---
-                st.subheader("Stage Summary")
-                stage_summary = analysis.get("stage_summary")
-                if stage_summary:
-                    st.markdown(stage_summary.get("markdown", ""))
-                else:
-                    st.info("No stage summary available.")
+    elif final_status.status == "failed":
+        render_error(final_status.error or {}, job_id)
 
-                # --- Anti-patterns ---
-                st.subheader("Anti-Patterns")
-                antipatterns = analysis.get("antipatterns")
-                if antipatterns:
-                    st.markdown(antipatterns.get("markdown", ""))
-                else:
-                    st.info("No anti-patterns detected.")
+    elif final_status.status == "timeout":
+        st.warning(
+            f"Job timed out. It may still be processing in the background. "
+            f"Job ID: `{job_id}`"
+        )
 
-                break
+    elif final_status.status == "error":
+        render_error(
+            final_status.error or {"message": "Connection error"},
+            job_id,
+        )
 
-            elif status == "failed":
-                result = j.get("result", {})
-                error = result.get("error", {})
-                st.error(
-                    f"Job failed: {error.get('type', 'Unknown')}: {error.get('message', 'No details')}"
-                )
-                break
 
-            elif status in ("pending", "running", "analysis_complete"):
-                attempt += 1
-                time.sleep(delay)
-                # Reset delay on successful response
-                delay = BASE_DELAY
-
-            else:
-                st.warning(f"Unknown status: {status}")
-                break
+if __name__ == "__main__":
+    main()
