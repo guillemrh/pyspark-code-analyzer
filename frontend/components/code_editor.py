@@ -51,7 +51,7 @@ def render_code_editor() -> str:
     code = st_ace(
         value=st.session_state.code,
         language="python",
-        theme="github",
+        theme="monokai",  # Dark theme
         font_size=14,
         tab_size=4,
         show_gutter=True,

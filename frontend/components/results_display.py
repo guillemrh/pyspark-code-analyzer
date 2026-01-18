@@ -140,39 +140,22 @@ def render_antipatterns_tab(analysis: dict) -> None:
     # Summary
     st.markdown(f"**Found {total_issues} potential issue(s)**")
 
-    # Show severity breakdown if available
-    by_severity = json_data.get("by_severity", {})
-    if by_severity:
-        severity_parts = [f"{sev}: {count}" for sev, count in by_severity.items()]
-        st.caption(f"By severity: {', '.join(severity_parts)}")
-
-    st.divider()
-
-    # Display issues grouped by rule
+    # Build table data
     if by_rule:
-        issue_idx = 0
+        table_data = []
         for rule_id, issues in by_rule.items():
             for issue in issues:
-                severity = issue.get("severity", "info")
-                severity_color = {
-                    "error": "red",
-                    "warning": "orange",
-                    "info": "blue",
-                }.get(severity, "gray")
-
+                severity = issue.get("severity", "info").upper()
                 message = issue.get("message", "No details")
-                nodes = issue.get("nodes", [])
+                nodes = ", ".join(issue.get("nodes", []))
+                table_data.append({
+                    "Severity": severity,
+                    "Rule": rule_id,
+                    "Message": message,
+                    "Affected Nodes": nodes,
+                })
 
-                with st.expander(
-                    f"**{rule_id}** - {message}",
-                    expanded=(issue_idx == 0),
-                ):
-                    st.markdown(f"**Severity:** :{severity_color}[{severity.upper()}]")
-
-                    if nodes:
-                        st.markdown(f"**Affected nodes:** `{', '.join(nodes)}`")
-
-                issue_idx += 1
+        st.table(table_data)
     elif markdown:
         # Fallback to markdown display
         st.markdown(markdown)
