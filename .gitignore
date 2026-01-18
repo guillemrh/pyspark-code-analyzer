@@ -1,3 +1,16 @@
 llm_context.txt
 .env
 *.env
+
+# Claude Code local settings
+.claude/settings.local.json
+CLAUDE.local.md
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
