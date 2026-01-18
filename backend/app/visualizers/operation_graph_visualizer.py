@@ -31,11 +31,11 @@ def render_operation_dag_to_dot(dag: OperationDAG) -> str:
         if node.dependency_type == DependencyType.WIDE:
             attrs.append("penwidth=2")
 
-        # Shuffles highlighted
+        # Shuffles highlighted (dark red for contrast with white text)
         if node.causes_shuffle:
-            attrs.append("color=red")
+            attrs.append('color="#C0392B"')
             attrs.append("style=filled")
-            attrs.append("fillcolor=mistyrose")
+            attrs.append('fillcolor="#C0392B"')
 
         attr_str = ", ".join(attrs)
         lines.append(f'  "{node.id}" [{attr_str}];')
