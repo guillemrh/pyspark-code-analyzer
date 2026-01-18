@@ -1,2 +1,5 @@
-streamlit
-requests
+streamlit>=1.28.0
+streamlit-ace>=0.1.1
+streamlit-agraph>=0.0.45
+requests>=2.31.0
+pydot>=2.0.0
