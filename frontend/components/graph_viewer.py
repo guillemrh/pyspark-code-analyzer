@@ -22,39 +22,45 @@ def render_graph(dot_string: str, graph_type: str = "dag") -> None:
     nodes, edges = dot_to_agraph(dot_string)
 
     if not nodes:
-        st.warning("Could not parse graph data")
+        st.warning("Could not parse graph data. Showing raw DOT:")
+        st.graphviz_chart(dot_string)
         return
+
+    # Render legend first (always visible)
+    render_legend()
 
     # Configure graph layout
     if graph_type == "dag":
         config = Config(
-            width="100%",
+            width=800,
             height=500,
             directed=True,
-            physics=True,
+            physics=False,  # Disable physics for stable layout
             hierarchical=True,
-            hierarchicalType="directed",
+            levelSeparation=100,
+            nodeSpacing=150,
+            treeSpacing=200,
+            blockShifting=True,
+            edgeMinimization=True,
+            parentCentralization=True,
+            direction="UD",  # Up-Down direction
             sortMethod="directed",
             nodeHighlightBehavior=True,
-            highlightColor="#F7F7F7",
+            highlightColor="#FF6B6B",
             collapsible=False,
-            node={
-                "labelProperty": "label",
-                "renderLabel": True,
-            },
-            link={
-                "highlightColor": "#FF6B6B",
-            },
         )
     else:  # lineage
         config = Config(
-            width="100%",
+            width=800,
             height=400,
             directed=True,
-            physics=True,
-            hierarchical=False,
+            physics=False,  # Disable physics for stable layout
+            hierarchical=True,
+            levelSeparation=80,
+            nodeSpacing=120,
+            direction="LR",  # Left-Right for lineage
             nodeHighlightBehavior=True,
-            highlightColor="#F7F7F7",
+            highlightColor="#FF6B6B",
             collapsible=False,
         )
 
@@ -62,31 +68,28 @@ def render_graph(dot_string: str, graph_type: str = "dag") -> None:
     try:
         agraph(nodes=nodes, edges=edges, config=config)
     except Exception as e:
-        st.error(f"Error rendering graph: {e}")
+        st.error(f"Error rendering interactive graph: {e}")
         # Fallback to graphviz
         st.graphviz_chart(dot_string)
 
-    # Render legend
-    render_legend()
-
 
 def render_legend() -> None:
-    """Render the color legend for the graph."""
+    """Render the color legend for the graph (always visible)."""
     legend = get_graph_legend()
 
-    with st.expander("Legend", expanded=False):
-        cols = st.columns(len(legend))
-        for col, (label, color) in zip(cols, legend.items()):
-            with col:
-                st.markdown(
-                    f'<div style="display: flex; align-items: center;">'
-                    f'<span style="background-color: {color}; '
-                    f'width: 16px; height: 16px; border-radius: 50%; '
-                    f'display: inline-block; margin-right: 8px;"></span>'
-                    f'<span style="font-size: 0.85em;">{label}</span>'
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
+    st.markdown("**Legend:**")
+    cols = st.columns(len(legend))
+    for col, (label, color) in zip(cols, legend.items()):
+        with col:
+            st.markdown(
+                f'<div style="display: flex; align-items: center;">'
+                f'<span style="background-color: {color}; '
+                f'width: 14px; height: 14px; border-radius: 50%; '
+                f'display: inline-block; margin-right: 6px;"></span>'
+                f'<span style="font-size: 0.8em;">{label}</span>'
+                f"</div>",
+                unsafe_allow_html=True,
+            )
 
 
 def render_dag_graph(dot_string: str) -> None:

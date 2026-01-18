@@ -48,6 +48,15 @@ def get_node_color(label: str) -> str:
     return COLORS.get(op_type, COLORS["default"])
 
 
+def clean_label(label: str) -> str:
+    """Clean up node label by removing newlines and extra whitespace."""
+    # Replace literal \n and actual newlines with space
+    cleaned = label.replace("\\n", " ").replace("\n", " ")
+    # Collapse multiple spaces
+    cleaned = " ".join(cleaned.split())
+    return cleaned
+
+
 def dot_to_agraph(
     dot_string: str, node_size: int = 25
 ) -> tuple[list[Node], list[Edge]]:
@@ -63,22 +72,47 @@ def dot_to_agraph(
     """
     nodes = []
     edges = []
+    seen_nodes = set()
 
-    # Parse node definitions: "node_id" [label="Node Label"]
-    node_pattern = r'"([^"]+)"\s*\[label="([^"]+)"'
-    for match in re.finditer(node_pattern, dot_string):
+    # Pattern 1: Nodes with explicit labels: "node_id" [label="Label", ...]
+    labeled_pattern = r'"([^"]+)"\s*\[([^\]]*label="([^"]+)"[^\]]*)\]'
+    for match in re.finditer(labeled_pattern, dot_string):
         node_id = match.group(1)
-        label = match.group(2)
-        color = get_node_color(label)
-        nodes.append(
-            Node(
-                id=node_id,
-                label=label,
-                size=node_size,
-                color=color,
-                font={"color": "#262730"},
+        label = clean_label(match.group(3))
+        if node_id not in seen_nodes:
+            seen_nodes.add(node_id)
+            color = get_node_color(label)
+            nodes.append(
+                Node(
+                    id=node_id,
+                    label=label,
+                    size=node_size,
+                    color=color,
+                    font={"color": "#FAFAFA"},  # Light text for dark mode
+                )
             )
-        )
+
+    # Pattern 2: Nodes without labels: "node_id" [shape=...] or "node_id" [...]
+    # Use node_id as the label
+    unlabeled_pattern = r'"([^"]+)"\s*\[([^\]]*)\];'
+    for match in re.finditer(unlabeled_pattern, dot_string):
+        node_id = match.group(1)
+        attrs = match.group(2)
+        # Skip if we already have this node (from labeled pattern)
+        # or if this line contains a label (already handled above)
+        if node_id not in seen_nodes and 'label=' not in attrs:
+            seen_nodes.add(node_id)
+            label = node_id  # Use node_id as label
+            color = get_node_color(label)
+            nodes.append(
+                Node(
+                    id=node_id,
+                    label=label,
+                    size=node_size,
+                    color=color,
+                    font={"color": "#FAFAFA"},  # Light text for dark mode
+                )
+            )
 
     # Parse edge definitions: "source" -> "target"
     edge_pattern = r'"([^"]+)"\s*->\s*"([^"]+)"'
@@ -89,7 +123,7 @@ def dot_to_agraph(
             Edge(
                 source=source,
                 target=target,
-                color="#888888",
+                color="#AAAAAA",  # Lighter edges for dark mode
             )
         )
 
