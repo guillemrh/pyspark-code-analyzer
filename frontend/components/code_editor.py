@@ -6,9 +6,35 @@ from streamlit_ace import st_ace
 from utils.examples import EXAMPLES, DEFAULT_EXAMPLE
 
 
+def render_sidebar_examples():
+    """Render the examples section in the sidebar (call inside sidebar context)."""
+    st.subheader("Examples")
+    example_names = list(EXAMPLES.keys())
+    selected_example = st.selectbox(
+        "Load example",
+        options=["-- Select --"] + example_names,
+        key="example_selector",
+        help="Select an example to load into the editor",
+    )
+
+    if selected_example != "-- Select --":
+        if st.button("Load Example", type="primary", use_container_width=True):
+            st.session_state.code = EXAMPLES[selected_example]
+            st.session_state.editor_key += 1  # Force editor refresh
+            st.rerun()
+
+    st.divider()
+
+    # Clear button
+    if st.button("Clear Editor", use_container_width=True):
+        st.session_state.code = ""
+        st.session_state.editor_key += 1  # Force editor refresh
+        st.rerun()
+
+
 def render_code_editor() -> str:
     """
-    Render the code editor with examples dropdown.
+    Render the code editor.
 
     Returns:
         The current code in the editor
@@ -18,31 +44,6 @@ def render_code_editor() -> str:
         st.session_state.code = EXAMPLES[DEFAULT_EXAMPLE]
     if "editor_key" not in st.session_state:
         st.session_state.editor_key = 0
-
-    # Example selector in sidebar
-    with st.sidebar:
-        st.subheader("Examples")
-        example_names = list(EXAMPLES.keys())
-        selected_example = st.selectbox(
-            "Load example",
-            options=["-- Select --"] + example_names,
-            key="example_selector",
-            help="Select an example to load into the editor",
-        )
-
-        if selected_example != "-- Select --":
-            if st.button("Load Example", type="primary", use_container_width=True):
-                st.session_state.code = EXAMPLES[selected_example]
-                st.session_state.editor_key += 1  # Force editor refresh
-                st.rerun()
-
-        st.divider()
-
-        # Clear button
-        if st.button("Clear Editor", use_container_width=True):
-            st.session_state.code = ""
-            st.session_state.editor_key += 1  # Force editor refresh
-            st.rerun()
 
     # Main code editor
     st.subheader("PySpark Code")

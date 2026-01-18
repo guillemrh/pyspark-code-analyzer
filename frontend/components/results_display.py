@@ -147,12 +147,10 @@ def render_antipatterns_tab(analysis: dict) -> None:
             for issue in issues:
                 severity = issue.get("severity", "info").upper()
                 message = issue.get("message", "No details")
-                nodes = ", ".join(issue.get("nodes", []))
                 table_data.append({
                     "Severity": severity,
                     "Rule": rule_id,
                     "Message": message,
-                    "Affected Nodes": nodes,
                 })
 
         st.table(table_data)

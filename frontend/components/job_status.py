@@ -83,24 +83,23 @@ def render_job_status(job_id: str, api_client: APIClient) -> JobStatus | None:
 
 
 def render_job_history():
-    """Render recent job history in sidebar."""
+    """Render recent job history (call this inside a sidebar context)."""
     if "history" not in st.session_state:
         st.session_state.history = []
 
-    with st.sidebar:
-        st.subheader("Recent Jobs")
-        if not st.session_state.history:
-            st.caption("No jobs yet")
-        else:
-            for job in st.session_state.history[-5:]:
-                status_emoji = {
-                    "finished": "✅",
-                    "failed": "❌",
-                    "running": "🔄",
-                    "pending": "⏳",
-                }.get(job.get("status", ""), "❓")
+    st.subheader("Recent Jobs")
+    if not st.session_state.history:
+        st.caption("No jobs yet")
+    else:
+        for job in st.session_state.history[-5:]:
+            status_emoji = {
+                "finished": "✅",
+                "failed": "❌",
+                "running": "🔄",
+                "pending": "⏳",
+            }.get(job.get("status", ""), "❓")
 
-                st.caption(f"{status_emoji} {job.get('job_id', 'Unknown')[:8]}...")
+            st.caption(f"{status_emoji} {job.get('job_id', 'Unknown')[:8]}...")
 
 
 def add_to_history(job_id: str, status: str):

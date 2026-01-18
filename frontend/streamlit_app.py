@@ -7,7 +7,7 @@ DAG visualization, and LLM-powered explanations.
 
 import streamlit as st
 
-from components.code_editor import render_code_editor
+from components.code_editor import render_code_editor, render_sidebar_examples
 from components.job_status import (
     render_job_status,
     render_job_history,
@@ -52,19 +52,18 @@ def main():
         "and AI-powered explanations"
     )
 
-    # Sidebar: job history
-    render_job_history()
+    # Sidebar content (ordered top to bottom)
+    with st.sidebar:
+        render_sidebar_examples()
+        st.divider()
+        render_job_history()
 
-    # Main content area
-    col_editor, col_spacer, col_button = st.columns([8, 1, 2])
+    # Main content: code editor
+    code = render_code_editor()
 
-    with col_editor:
-        code = render_code_editor()
-
-    with col_button:
-        st.write("")  # Spacer
-        st.write("")  # Spacer
-        st.write("")  # Spacer
+    # Explain button below editor
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
         explain_clicked = st.button(
             "Explain Code",
             type="primary",
