@@ -72,7 +72,7 @@ def run_dag_pipeline(code: str) -> dict:
             assign_stages(operation_dag)
 
             # Detect anti-patterns (multiple actions on the same lineage)
-            findings = detect_antipatterns(operation_dag)
+            findings = detect_antipatterns(operation_dag, source_code=code)
 
             # Render lineage and operation DAG to Graphviz DOT
             dag_dot = render_operation_dag_to_dot(operation_dag)

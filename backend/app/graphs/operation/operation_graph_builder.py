@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 from app.parsers.dag_nodes import SparkOperationNode
 from app.parsers.spark_semantics import OpType, DependencyType, SHUFFLE_OPS
 
@@ -12,19 +12,21 @@ class OperationDAGNode:
         self,
         id: str,
         label: str,
-        op_type: OpType | None,
+        op_type: Optional[OpType],
         causes_shuffle: bool,
         lineno: int,
+        op_node: Optional[SparkOperationNode] = None,
     ):
         self.id = id
         self.label = label
         self.op_type = op_type
         self.causes_shuffle = causes_shuffle
         self.lineno = lineno
+        self.op_node = op_node  # Reference to original SparkOperationNode
         self.dependency_type = (
             DependencyType.WIDE if causes_shuffle else DependencyType.NARROW
         )
-        self.stage_id: int | None = None
+        self.stage_id: Optional[int] = None
         self.parents = set()
         self.children = set()
 
@@ -71,6 +73,7 @@ def build_operation_dag(
                 op_type=op.op_type,
                 causes_shuffle=op.operation in SHUFFLE_OPS,
                 lineno=op.lineno,
+                op_node=op,  # Store reference to original operation
             )
         )
         # Record this operation as the latest producer of its DataFrame

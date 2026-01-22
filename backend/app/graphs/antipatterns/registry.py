@@ -1,3 +1,5 @@
+from typing import Optional
+
 from app.graphs.antipatterns.rules.multiple_actions import MultipleActionsRule
 from app.graphs.antipatterns.rules.early_shuffle import EarlyShuffleRule
 from app.graphs.antipatterns.rules.action_without_cache import ActionWithoutCacheRule
@@ -17,8 +19,18 @@ RULES = [
 ]
 
 
-def detect_antipatterns(dag):
+def detect_antipatterns(dag, source_code: Optional[str] = None):
+    """
+    Detect anti-patterns in the operation DAG.
+
+    Args:
+        dag: The operation DAG to analyze
+        source_code: Optional original source code for contextual suggestions
+
+    Returns:
+        List of AntiPatternFinding instances
+    """
     findings = []
     for rule in RULES:
-        findings.extend(rule.detect(dag))
+        findings.extend(rule.detect(dag, source_code))
     return findings

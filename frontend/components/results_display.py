@@ -135,6 +135,8 @@ def render_antipatterns_tab(analysis: dict) -> None:
     # Build table data
     if by_rule:
         table_data = []
+        all_issues = []  # Store issues with their metadata for detail sections
+
         for rule_id, issues in by_rule.items():
             for issue in issues:
                 severity = issue.get("severity", "info").upper()
@@ -144,8 +146,50 @@ def render_antipatterns_tab(analysis: dict) -> None:
                     "Rule": rule_id,
                     "Message": message,
                 })
+                # Store full issue data for expandable sections
+                all_issues.append({
+                    "severity": severity,
+                    "rule": rule_id,
+                    "message": message,
+                    "suggestion": issue.get("suggestion"),
+                })
 
         st.table(table_data)
+
+        # Add expandable sections for each issue with suggestions
+        if all_issues:
+            st.divider()
+            st.markdown("### Issue Details & Suggestions")
+
+            for idx, issue in enumerate(all_issues, 1):
+                suggestion = issue.get("suggestion")
+
+                # Create expander title with severity and rule
+                expander_title = f"Issue {idx}: [{issue['severity']}] {issue['rule']}"
+
+                with st.expander(expander_title):
+                    # Show full message
+                    st.markdown("**Description:**")
+                    st.markdown(issue["message"])
+
+                    # Show suggestion if available
+                    if suggestion and suggestion.strip():
+                        st.markdown("**Suggested Fix:**")
+
+                        # Check if suggestion contains code (heuristic: contains parentheses and periods/newlines)
+                        # or if it contains common code keywords
+                        is_code = any(keyword in suggestion.lower() for keyword in
+                                     ["cache()", "persist()", "repartition(", "df.", "spark.", "```"])
+
+                        if is_code or "\n" in suggestion:
+                            # Display as code with copy functionality
+                            st.code(suggestion, language="python")
+                        else:
+                            # Display as formatted text
+                            st.markdown(suggestion)
+                    else:
+                        st.info("No automated suggestion available for this issue.")
+
     elif markdown:
         # Fallback to markdown display
         st.markdown(markdown)
