@@ -97,3 +97,35 @@ Config loaded via pydantic_settings in `backend/app/config.py`.
 - Redis must be accessible before backend starts
 - Celery worker concurrency is set to 1
 - Local debug entry point: `backend/app/debug_run.py`
+
+---
+
+## Agent Routing
+
+Delegate complex tasks to specialized subagents:
+
+| Request Pattern | Agent | Model | Examples |
+|-----------------|-------|-------|----------|
+| Backend code changes | `backend` | opus | "fix the parser", "add API endpoint", "new antipattern rule" |
+| Frontend/UI changes | `frontend` | sonnet | "update the UI", "fix streamlit", "change theme" |
+| Docker/Infra issues | `devops` | sonnet | "fix docker", "update compose", "check logs" |
+
+### When to Use Agents
+
+- **Use agents** for: multi-file changes, architectural decisions, new features, debugging complex issues
+- **Don't use agents** for: simple questions, single-line fixes, running commands
+
+## Skills (Quick Commands)
+
+| Skill | Description | Model |
+|-------|-------------|-------|
+| `/test` | Run backend pytest tests | haiku |
+| `/lint` | Run ruff + black on backend | haiku |
+| `/build` | Rebuild Docker services | haiku |
+| `/review` | Review recent code changes | haiku |
+
+### Specialized Skills
+
+| Skill | Description |
+|-------|-------------|
+| `/pyspark-antipattern-rule` | Guided workflow for creating new anti-pattern detection rules |
