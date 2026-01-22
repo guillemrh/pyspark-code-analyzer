@@ -38,6 +38,22 @@ tracer = trace.get_tracer(__name__)
     "/explain/pyspark",
     response_model=JobResponse,
     dependencies=[Depends(rate_limit)],
+    tags=["Analysis"],
+    summary="Submit PySpark code for analysis",
+    description="""
+    Submit PySpark code for comprehensive analysis including:
+    - AST parsing and syntax validation
+    - Operation DAG construction
+    - Stage assignment and shuffle detection
+    - Data lineage tracking
+    - Anti-pattern detection
+    - LLM-powered explanation generation
+
+    Returns immediately with a job_id. Use GET /status/{job_id} to poll for results.
+    Results are cached for 1 hour.
+
+    Rate limit: 5 requests per 60 seconds per client.
+    """,
 )
 async def explain_pyspark(request: CodeRequest):
     start = time.time()
@@ -152,7 +168,21 @@ async def explain_pyspark(request: CodeRequest):
         ).observe(time.time() - start)
 
 
-@router.get("/status/{job_id}")
+@router.get(
+    "/status/{job_id}",
+    tags=["Analysis"],
+    summary="Get analysis job status",
+    description="""
+    Poll for the status of a submitted analysis job.
+
+    Possible statuses:
+    - `pending`: Job is queued or processing
+    - `finished`: Analysis complete, result available
+    - `error`: Job failed (check result.error for details)
+
+    If cached=true, the result was returned from cache (instant).
+    """,
+)
 async def get_status(job_id: str):
     job_key = f"job:{job_id}"
     payload = get_result(job_key)
@@ -174,12 +204,30 @@ async def get_status(job_id: str):
     }
 
 
-@router.get("/health")
+@router.get(
+    "/health",
+    tags=["System"],
+    summary="Health check",
+    description="Basic liveness probe. Returns 200 OK if the service is running.",
+)
 async def health():
     return {"status": "ok"}
 
 
-@router.get("/ready")
+@router.get(
+    "/ready",
+    tags=["System"],
+    summary="Readiness check",
+    description="""
+    Readiness probe for orchestration systems (Kubernetes, Docker Compose health checks).
+
+    Checks:
+    - Redis connectivity (can ping)
+    - Required environment variables (REDIS_URL, GEMINI_API_KEY)
+
+    Returns 503 Service Unavailable if any check fails.
+    """,
+)
 async def ready():
     # 1) Redis check
     try:
@@ -206,7 +254,12 @@ async def ready():
     return {"status": "ready"}
 
 
-@router.get("/version")
+@router.get(
+    "/version",
+    tags=["System"],
+    summary="Get API version",
+    description="Returns the current API version.",
+)
 async def version():
     return {
         "version": settings.app_version,
