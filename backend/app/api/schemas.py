@@ -3,7 +3,17 @@ from typing import Optional
 
 
 class CodeRequest(BaseModel):
-    code: str = Field(..., min_length=1, max_length=100_000)
+    code: str = Field(
+        ...,
+        min_length=1,
+        max_length=100_000,
+        description="PySpark code to analyze (max 100,000 characters)",
+        examples=[
+            """df = spark.read.parquet("data.parquet")
+df_filtered = df.filter(df.age > 25)
+df_filtered.show()"""
+        ],
+    )
 
     @field_validator("code")
     @classmethod
@@ -24,9 +34,18 @@ class ExplanationResult(BaseModel):
 
 
 class JobResponse(BaseModel):
-    job_id: str
-    status: str
-    cached: bool = False
+    job_id: str = Field(
+        description="Unique job identifier for polling status",
+        examples=["550e8400-e29b-41d4-a716-446655440000"],
+    )
+    status: str = Field(
+        description="Job status: 'pending' or 'finished'",
+        examples=["pending"],
+    )
+    cached: bool = Field(
+        default=False,
+        description="Whether the result was returned from cache",
+    )
 
 
 class ExplanationResponse(BaseModel):
