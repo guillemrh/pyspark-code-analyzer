@@ -29,6 +29,14 @@ class CollectOnLargeDataRule(AntiPatternRule):
                             "take(n), show(), or write() instead."
                         ),
                         nodes=[node.id],
+                        suggestion=(
+                            "Replace collect() with a safer alternative:\n"
+                            "  # Instead of: df.collect()\n"
+                            "  df.take(100)      # Get first 100 rows as list\n"
+                            "  df.show(20)       # Display 20 rows in console\n"
+                            "  df.limit(n).collect()  # Collect only n rows\n"
+                            "  df.write.parquet('output/')  # Write to storage"
+                        ),
                     )
                 )
 

@@ -41,6 +41,17 @@ class UDFUsageRule(AntiPatternRule):
                             "serialization between JVM and Python."
                         ),
                         nodes=[node.id],
+                        suggestion=(
+                            "Check if a native Spark function exists:\n"
+                            "  from pyspark.sql import functions as F\n"
+                            "  # Instead of: @udf def upper(s): return s.upper()\n"
+                            "  #             df.withColumn('col', upper(df.col))\n"
+                            "  # Use native: df.withColumn('col', F.upper(df.col))\n"
+                            "  # Common replacements:\n"
+                            "  #   String: F.upper, F.lower, F.trim, F.regexp_replace\n"
+                            "  #   Math: F.abs, F.round, F.ceil, F.floor\n"
+                            "  #   Date: F.date_format, F.datediff, F.to_date"
+                        ),
                     )
                 )
             # Flag withColumn operations as potential UDF usage points
@@ -55,6 +66,16 @@ class UDFUsageRule(AntiPatternRule):
                             "pyspark.sql.functions) for better performance."
                         ),
                         nodes=[node.id],
+                        suggestion=(
+                            "If using a UDF in this withColumn, check for native alternatives:\n"
+                            "  from pyspark.sql import functions as F\n"
+                            "  # Instead of custom UDF:\n"
+                            "  # df.withColumn('new_col', my_udf(df.col))\n"
+                            "  # Try native functions:\n"
+                            "  df.withColumn('new_col', F.when(F.col('col') > 0, 'positive')"
+                            ".otherwise('negative'))\n"
+                            "  df.withColumn('new_col', F.concat(F.col('a'), F.lit('-'), F.col('b')))"
+                        ),
                     )
                 )
 

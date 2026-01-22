@@ -34,6 +34,22 @@ class ActionWithoutCacheRule(AntiPatternRule):
                             "Consider using cache() or persist()."
                         ),
                         nodes=[node.id],
+                        suggestion=(
+                            "Add .cache() or .persist() at the branching point:\n"
+                            "  # Instead of:\n"
+                            "  base_df = df.filter(...).select(...)\n"
+                            "  result1 = base_df.groupBy('a').count()  # Recomputes base_df\n"
+                            "  result2 = base_df.groupBy('b').sum()    # Recomputes base_df again!\n"
+                            "  \n"
+                            "  # Use cache() for memory storage:\n"
+                            "  base_df = df.filter(...).select(...).cache()\n"
+                            "  result1 = base_df.groupBy('a').count()  # Computes and caches\n"
+                            "  result2 = base_df.groupBy('b').sum()    # Reads from cache\n"
+                            "  \n"
+                            "  # Or persist() for more control:\n"
+                            "  from pyspark import StorageLevel\n"
+                            "  base_df = base_df.persist(StorageLevel.MEMORY_AND_DISK)"
+                        ),
                     )
                 )
 

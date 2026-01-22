@@ -27,6 +27,20 @@ class MultipleActionsRule(AntiPatternRule):
                             "Multiple actions detected on the same lineage without caching"
                         ),
                         nodes=action_ids,
+                        suggestion=(
+                            "Add .cache() before the first action to avoid recomputation:\n"
+                            "  # Instead of:\n"
+                            "  df = spark.read.parquet('data/')\n"
+                            "  df = df.filter(...).groupBy(...).agg(...)\n"
+                            "  df.count()    # Action 1 - computes full lineage\n"
+                            "  df.show()     # Action 2 - recomputes full lineage!\n"
+                            "  \n"
+                            "  # Use:\n"
+                            "  df = spark.read.parquet('data/')\n"
+                            "  df = df.filter(...).groupBy(...).agg(...).cache()\n"
+                            "  df.count()    # Action 1 - computes and caches\n"
+                            "  df.show()     # Action 2 - reads from cache"
+                        ),
                     )
                 )
 

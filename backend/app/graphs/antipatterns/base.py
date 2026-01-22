@@ -10,6 +10,7 @@ class AntiPatternFinding:
     severity: str
     message: str
     nodes: List[str]
+    suggestion: str = None  # Optional autofix/recommendation with code example
 
 
 class AntiPatternRule(ABC):

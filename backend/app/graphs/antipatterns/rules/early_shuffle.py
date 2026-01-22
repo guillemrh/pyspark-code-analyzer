@@ -38,6 +38,17 @@ class EarlyShuffleRule(AntiPatternRule):
                                 "Consider filtering or reducing data before this operation."
                             ),
                             nodes=[node.id],
+                            suggestion=(
+                                "Move filter/select operations before the shuffle:\n"
+                                f"  # Current: shuffle ({node.label}) happens early\n"
+                                "  # Instead of:\n"
+                                "  df.groupBy('category').agg(F.sum('amount'))\n"
+                                "  \n"
+                                "  # Filter first to reduce shuffle data:\n"
+                                "  df.filter(F.col('date') > '2024-01-01')  # Reduce rows\n"
+                                "    .select('category', 'amount')          # Reduce columns\n"
+                                "    .groupBy('category').agg(F.sum('amount'))"
+                            ),
                         )
                     )
 

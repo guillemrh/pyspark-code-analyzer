@@ -15,13 +15,14 @@ def antipatterns_summary_json(
     by_severity = defaultdict(int)
 
     for f in findings:
-        by_rule[f.rule_id].append(
-            {
-                "severity": f.severity,
-                "message": f.message,
-                "nodes": f.nodes,
-            }
-        )
+        finding_dict = {
+            "severity": f.severity,
+            "message": f.message,
+            "nodes": f.nodes,
+        }
+        if f.suggestion:
+            finding_dict["suggestion"] = f.suggestion
+        by_rule[f.rule_id].append(finding_dict)
         by_severity[f.severity] += 1
 
     return {
@@ -58,6 +59,14 @@ def antipattern_summary_markdown(summary: Dict[str, Any]) -> str:
                 f"- **{issue['severity']}**: {issue['message']} "
                 f"(nodes: {', '.join(issue['nodes'])})"
             )
+            if issue.get("suggestion"):
+                lines.append("")
+                lines.append("  **Suggested fix:**")
+                lines.append("  ```python")
+                # Indent each line of the suggestion for proper markdown formatting
+                for suggestion_line in issue["suggestion"].split("\n"):
+                    lines.append(f"  {suggestion_line}")
+                lines.append("  ```")
         lines.append("")
 
     return "\n".join(lines)

@@ -39,6 +39,19 @@ class BroadcastJoinHintRule(AntiPatternRule):
                             "Example: df1.join(broadcast(small_df), ...)."
                         ),
                         nodes=[node.id],
+                        suggestion=(
+                            "Use broadcast() for the smaller DataFrame:\n"
+                            "  from pyspark.sql.functions import broadcast\n"
+                            "  # Instead of: large_df.join(small_df, 'key')\n"
+                            "  # Use: large_df.join(broadcast(small_df), 'key')\n"
+                            "  \n"
+                            "  # Full example:\n"
+                            "  result = orders_df.join(\n"
+                            "      broadcast(countries_df),  # small lookup table\n"
+                            "      orders_df.country_id == countries_df.id,\n"
+                            "      'left'\n"
+                            "  )"
+                        ),
                     )
                 )
 

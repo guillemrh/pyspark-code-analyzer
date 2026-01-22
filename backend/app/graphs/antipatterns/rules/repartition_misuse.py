@@ -37,6 +37,21 @@ class RepartitionMisuseRule(AntiPatternRule):
                                 "This repartition is likely unnecessary."
                             ),
                             nodes=[node.id, child.id],
+                            suggestion=(
+                                "Remove the unnecessary repartition or use coalesce:\n"
+                                "  # Redundant pattern (two shuffles):\n"
+                                "  df.repartition(100).groupBy('key').count()\n"
+                                "  \n"
+                                "  # Better: let groupBy handle partitioning:\n"
+                                "  df.groupBy('key').count()\n"
+                                "  \n"
+                                "  # To reduce partitions (no shuffle), use coalesce:\n"
+                                "  df.coalesce(10)  # Reduces partitions without full shuffle\n"
+                                "  \n"
+                                "  # Only use repartition when you need to:\n"
+                                "  # - Increase partitions (coalesce can only decrease)\n"
+                                "  # - Partition by specific columns for subsequent joins"
+                            ),
                         )
                     )
 
