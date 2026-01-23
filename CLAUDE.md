@@ -64,13 +64,28 @@ cd backend && black --check app
 - `OpType` enum: TRANSFORMATION | ACTION
 - `SHUFFLE_OPS`: {"groupBy", "join", "distinct", "repartition"}
 
+### Parser Features (parsers/ast_parser.py)
+
+- **60+ PySpark operations** supported (see `spark_semantics.py`)
+- **spark.read.\*** patterns: parquet, csv, json, jdbc, table, etc.
+- **spark.sql()** queries
+- **df.write.\*** patterns with chaining
+- **Variable aliasing**: tracks `alias = df` and resolves through chains
+- **Nested expressions**: handles `df1.join(df2.filter(...), on="id")`
+
 ### Anti-pattern Rules (graphs/antipatterns/rules/)
 
-Extensible via registry pattern:
-- `MultipleActionsRule`: Multiple actions on same lineage
-- `EarlyShuffleRule`: Shuffle before necessary
-- `ActionWithoutCacheRule`: Action without caching
-- `RepartitionMisuseRule`: Repartition before actions
+Extensible via registry pattern (10 rules):
+- `MultipleActionsRule` (HIGH): Multiple actions on same lineage
+- `EarlyShuffleRule` (HIGH): Shuffle before necessary
+- `CartesianJoinRule` (HIGH): crossJoin without filters
+- `CollectInsideLoopRule` (HIGH): Multiple collect() calls
+- `ActionWithoutCacheRule` (MEDIUM): Action without caching
+- `RepartitionMisuseRule` (MEDIUM): Repartition before actions
+- `UnpersistMissingRule` (MEDIUM): cache() without unpersist()
+- `CollectOnLargeDataRule` (WARNING): collect() on potentially large data
+- `UDFUsageRule` (INFO): Suggests native functions over UDFs
+- `BroadcastJoinHintRule` (INFO): Suggests broadcast for small tables
 
 ## API Endpoints
 
@@ -79,6 +94,8 @@ Extensible via registry pattern:
 - `GET /health`: Liveness probe
 - `GET /ready`: Readiness probe (checks Redis + env vars)
 - `GET /metrics`: Prometheus scrape endpoint
+- `GET /docs`: Interactive Swagger UI documentation
+- `GET /redoc`: Alternative API documentation
 
 ## Configuration
 
