@@ -11,8 +11,8 @@ from utils.graph_converter import (
 )
 
 
-def render_legend():
-    """Render a color legend for the graph."""
+def render_dag_legend():
+    """Render a color legend for the DAG graph."""
     st.markdown(
         f"""
         <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 10px;">
@@ -20,6 +20,21 @@ def render_legend():
             <span><span style="background-color: {COLORS['transformation']}; color: white; padding: 2px 8px; border-radius: 3px;">●</span> Transformation</span>
             <span><span style="background-color: {COLORS['shuffle']}; color: white; padding: 2px 8px; border-radius: 3px;">●</span> Shuffle</span>
             <span><span style="background-color: {COLORS['action']}; color: white; padding: 2px 8px; border-radius: 3px;">●</span> Action</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_lineage_legend():
+    """Render a color legend for the lineage graph."""
+    st.markdown(
+        f"""
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 10px;">
+            <span><span style="background-color: {COLORS['input']}; color: white; padding: 2px 8px; border-radius: 3px;">●</span> Source DataFrame</span>
+            <span><span style="background-color: {COLORS['transformation']}; color: white; padding: 2px 8px; border-radius: 3px;">●</span> Intermediate</span>
+            <span><span style="background-color: {COLORS['shuffle']}; color: white; padding: 2px 8px; border-radius: 3px;">●</span> Join Result</span>
+            <span><span style="background-color: {COLORS['action']}; color: white; padding: 2px 8px; border-radius: 3px;">●</span> Final Output</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -34,7 +49,7 @@ def render_dag_graph(dot_string: str) -> None:
 
     st.markdown("**Operation DAG** - Shows the execution flow of Spark operations")
     st.caption("Drag nodes to rearrange. Scroll to zoom. Click and drag background to pan.")
-    render_legend()
+    render_dag_legend()
 
     try:
         nodes, edges = parse_dot_to_agraph(dot_string, graph_type="dag")
@@ -57,6 +72,7 @@ def render_lineage_graph(dot_string: str) -> None:
         "**Data Lineage** - Shows DataFrame dependencies and transformations"
     )
     st.caption("Drag nodes to rearrange. Scroll to zoom. Click and drag background to pan.")
+    render_lineage_legend()
 
     try:
         nodes, edges = parse_dot_to_agraph(dot_string, graph_type="lineage")
