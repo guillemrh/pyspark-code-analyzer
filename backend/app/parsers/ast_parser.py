@@ -1,7 +1,7 @@
 # backend/app/parsers/ast_parser.py
 
 import ast
-from typing import List, Dict
+from typing import List, Dict, Optional, Tuple
 from .dag_nodes import SparkOperationNode
 from app.parsers.spark_semantics import SPARK_OPS, OpType
 
@@ -12,16 +12,114 @@ class PySparkASTParser(ast.NodeVisitor):
     from single-file PySpark scripts.
     """
 
-    MULTI_PARENT_OPS = {"join", "union", "unionAll", "intersect", "except"}
+    MULTI_PARENT_OPS = {
+        "join",
+        "union",
+        "unionAll",
+        "unionByName",
+        "intersect",
+        "intersectAll",
+        "except",
+        "exceptAll",
+        "subtract",
+        "crossJoin",
+    }
 
     def __init__(self):
         self.operations: List[SparkOperationNode] = []
         self.variable_lineage: Dict[str, List[str]] = {}
 
+    def _is_spark_read_pattern(self, node: ast.Call) -> Tuple[bool, Optional[str]]:
+        """
+        Check if this is a spark.read.* pattern like:
+        - spark.read.parquet("file")
+        - spark.read.csv("file", header=True)
+        - spark.read.format("parquet").load("file")
+
+        Returns (is_spark_read, operation_name)
+        """
+        current = node
+        chain = []
+
+        # Walk the call chain to find spark.read.*
+        while isinstance(current, ast.Call):
+            if isinstance(current.func, ast.Attribute):
+                chain.append(current.func.attr)
+                current = current.func.value
+            else:
+                break
+
+        # Check if we have a spark.read.* pattern
+        if isinstance(current, ast.Attribute):
+            if current.attr == "read":
+                if isinstance(current.value, ast.Name) and current.value.id in (
+                    "spark",
+                    "session",
+                ):
+                    # The operation is the last item in the reversed chain
+                    if chain:
+                        return True, chain[0]
+
+        return False, None
+
+    def _is_spark_sql_pattern(self, node: ast.Call) -> bool:
+        """
+        Check if this is a spark.sql("...") pattern.
+        """
+        if isinstance(node.func, ast.Attribute):
+            if node.func.attr == "sql":
+                if isinstance(node.func.value, ast.Name) and node.func.value.id in (
+                    "spark",
+                    "session",
+                ):
+                    return True
+        return False
+
+    def _is_write_pattern(
+        self, node: ast.Call
+    ) -> Tuple[bool, Optional[str], Optional[str]]:
+        """
+        Check if this is a df.write.* pattern like:
+        - df.write.parquet("output")
+        - df.write.mode("overwrite").parquet("output")
+        - df.write.format("parquet").save("output")
+
+        Returns (is_write, base_df, operation_name)
+        """
+        current = node
+        chain = []
+        base_df = None
+
+        # Walk the call chain to find *.write.*
+        while isinstance(current, ast.Call):
+            if isinstance(current.func, ast.Attribute):
+                chain.append(current.func.attr)
+                current = current.func.value
+            else:
+                break
+
+        # Check for attribute chain ending in .write
+        while isinstance(current, ast.Attribute):
+            chain.append(current.attr)
+            current = current.value
+
+        if isinstance(current, ast.Name):
+            base_df = current.id
+
+        # Check if "write" is in the chain
+        if "write" in chain:
+            # Get the final operation (first in chain since we built it backwards)
+            if chain:
+                return True, base_df, chain[0]
+
+        return False, None, None
+
     def visit_Assign(self, node: ast.Assign):
         """
         Handles patterns like:
         df2 = df1.select(...).filter(...)
+        df = spark.read.parquet("file")
+        result = spark.sql("SELECT * FROM table")
         """
 
         # Checking if the right-hand side of the assignment (node.value) is a function call (ast.Call).
@@ -36,6 +134,39 @@ class PySparkASTParser(ast.NodeVisitor):
 
         # Variable name on the left-hand side of the assignment
         target_df = node.targets[0].id
+
+        # Check for spark.read.* pattern
+        is_spark_read, read_op = self._is_spark_read_pattern(node.value)
+        if is_spark_read and read_op:
+            node_id = f"{target_df}_{read_op}_{node.lineno}"
+            op_type = SPARK_OPS.get(read_op, OpType.TRANSFORMATION)
+
+            op_node = SparkOperationNode(
+                id=node_id,
+                df_name=target_df,
+                operation=read_op,
+                parents=[],  # Data source has no parents
+                lineno=node.lineno,
+                op_type=op_type,
+            )
+            self.operations.append(op_node)
+            self.generic_visit(node)
+            return
+
+        # Check for spark.sql() pattern
+        if self._is_spark_sql_pattern(node.value):
+            node_id = f"{target_df}_sql_{node.lineno}"
+            op_node = SparkOperationNode(
+                id=node_id,
+                df_name=target_df,
+                operation="sql",
+                parents=[],  # SQL query creates a new DataFrame
+                lineno=node.lineno,
+                op_type=OpType.TRANSFORMATION,
+            )
+            self.operations.append(op_node)
+            self.generic_visit(node)
+            return
 
         # Invoked on the right-hand side of the assignment to retrieve the sequence of method calls
         call_chain = self._extract_call_chain(node.value)
@@ -145,8 +276,27 @@ class PySparkASTParser(ast.NodeVisitor):
         df.show()
         df.collect()
         df1.filter(...)
+        df.write.parquet("output")
+        df.write.mode("overwrite").parquet("output")
         """
         if not isinstance(node.value, ast.Call):
+            return
+
+        # Check for write pattern (df.write.*)
+        is_write, base_df, write_op = self._is_write_pattern(node.value)
+        if is_write and base_df and write_op:
+            # For write patterns, create a single write action node
+            node_id = f"{base_df}_write_{node.lineno}"
+            op_node = SparkOperationNode(
+                id=node_id,
+                df_name=base_df,
+                operation="write",
+                parents=[base_df],
+                lineno=node.lineno,
+                op_type=OpType.ACTION,
+            )
+            self.operations.append(op_node)
+            self.generic_visit(node)
             return
 
         call_chain = self._extract_call_chain(node.value)
