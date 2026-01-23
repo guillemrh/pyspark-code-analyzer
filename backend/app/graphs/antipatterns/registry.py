@@ -7,6 +7,9 @@ from app.graphs.antipatterns.rules.repartition_misuse import RepartitionMisuseRu
 from app.graphs.antipatterns.rules.collect_on_large_data import CollectOnLargeDataRule
 from app.graphs.antipatterns.rules.udf_usage import UDFUsageRule
 from app.graphs.antipatterns.rules.broadcast_join_hint import BroadcastJoinHintRule
+from app.graphs.antipatterns.rules.cartesian_join import CartesianJoinRule
+from app.graphs.antipatterns.rules.collect_inside_loop import CollectInsideLoopRule
+from app.graphs.antipatterns.rules.unpersist_missing import UnpersistMissingRule
 
 RULES = [
     MultipleActionsRule(),
@@ -16,6 +19,9 @@ RULES = [
     CollectOnLargeDataRule(),
     UDFUsageRule(),
     BroadcastJoinHintRule(),
+    CartesianJoinRule(),
+    CollectInsideLoopRule(),
+    UnpersistMissingRule(),
 ]
 
 

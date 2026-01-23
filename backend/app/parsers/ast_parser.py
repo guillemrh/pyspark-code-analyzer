@@ -28,6 +28,143 @@ class PySparkASTParser(ast.NodeVisitor):
     def __init__(self):
         self.operations: List[SparkOperationNode] = []
         self.variable_lineage: Dict[str, List[str]] = {}
+        self.alias_map: Dict[str, str] = {}  # Maps alias -> original variable
+        self._anonymous_counter: int = 0
+
+    def _generate_anonymous_df_name(self) -> str:
+        """Generate a unique anonymous DataFrame name for nested expressions."""
+        self._anonymous_counter += 1
+        return f"_anon_df_{self._anonymous_counter}"
+
+    def _is_dataframe_method_chain(self, node: ast.AST) -> bool:
+        """
+        Check if a node represents a DataFrame method chain (e.g., df.filter(...).select(...)).
+        Returns True if the node is a Call with an Attribute func that could be a DF operation.
+        """
+        if not isinstance(node, ast.Call):
+            return False
+        if not isinstance(node.func, ast.Attribute):
+            return False
+        # Check if the method name is a known Spark operation
+        op_name = node.func.attr
+        return op_name in SPARK_OPS
+
+    def _extract_operations_from_expr(
+        self, expr: ast.AST, lineno: int
+    ) -> Tuple[List[SparkOperationNode], Optional[str]]:
+        """
+        Extract all DataFrame operations from an expression that may contain
+        a method chain (e.g., df2.filter(col("x") > 10).select("id")).
+
+        This method handles nested DataFrame operation chains that appear as
+        arguments to multi-parent operations like join() or union().
+
+        Args:
+            expr: An AST expression that may contain DataFrame operations
+            lineno: Line number for the operations
+
+        Returns:
+            A tuple of (list of SparkOperationNode objects, final DataFrame name)
+            The final DataFrame name is either the base variable name (if simple)
+            or an anonymous name representing the result of the chain.
+        """
+        # Base case: simple variable name
+        if isinstance(expr, ast.Name):
+            return [], expr.id
+
+        # Not a method call chain - return empty
+        if not isinstance(expr, ast.Call):
+            return [], None
+
+        # Check if this is a DataFrame method chain
+        if not self._is_dataframe_method_chain(expr):
+            return [], None
+
+        # Extract the call chain from this expression
+        chain = []
+        current = expr
+        base_df = None
+
+        # First, find the base DataFrame name
+        tmp = current
+        while isinstance(tmp, ast.Call):
+            if isinstance(tmp.func, ast.Attribute):
+                if isinstance(tmp.func.value, ast.Name):
+                    base_df = self._resolve_alias(tmp.func.value.id)
+                    break
+                tmp = tmp.func.value
+            else:
+                break
+
+        if base_df is None:
+            return [], None
+
+        # Now extract all operations in the chain
+        while isinstance(current, ast.Call):
+            if isinstance(current.func, ast.Attribute):
+                op_name = current.func.attr
+
+                # Skip if not a Spark operation
+                if op_name not in SPARK_OPS:
+                    current = current.func.value
+                    continue
+
+                parents = [base_df]
+
+                # For multi-parent operations, also extract from arguments
+                if op_name in self.MULTI_PARENT_OPS and current.args:
+                    for arg in current.args:
+                        if isinstance(arg, ast.Name):
+                            parents.append(self._resolve_alias(arg.id))
+                        elif isinstance(arg, ast.Call):
+                            # Recursively extract from nested call
+                            nested_ops, nested_df = self._extract_operations_from_expr(
+                                arg, lineno
+                            )
+                            if nested_ops:
+                                # Add nested operations to the chain
+                                for op in nested_ops:
+                                    chain.append(
+                                        {
+                                            "op": op.operation,
+                                            "parents": op.parents,
+                                            "df_name": op.df_name,
+                                        }
+                                    )
+                            if nested_df:
+                                parents.append(nested_df)
+
+                chain.append({"op": op_name, "parents": parents, "df_name": None})
+                current = current.func.value
+            else:
+                break
+
+        # Reverse to get correct order
+        chain = list(reversed(chain))
+
+        # Generate anonymous DataFrame name for this chain's result
+        anon_df_name = self._generate_anonymous_df_name()
+
+        # Create SparkOperationNode objects
+        extracted_ops = []
+        for call_info in chain:
+            op_type = SPARK_OPS.get(call_info["op"], OpType.TRANSFORMATION)
+            # Use the df_name from the call_info if it was from a nested op,
+            # otherwise use the anonymous name for the current chain
+            df_name = call_info["df_name"] if call_info["df_name"] else anon_df_name
+            node_id = f"{df_name}_{call_info['op']}_{lineno}"
+
+            op_node = SparkOperationNode(
+                id=node_id,
+                df_name=df_name,
+                operation=call_info["op"],
+                parents=call_info["parents"],
+                lineno=lineno,
+                op_type=op_type,
+            )
+            extracted_ops.append(op_node)
+
+        return extracted_ops, anon_df_name
 
     def _is_spark_read_pattern(self, node: ast.Call) -> Tuple[bool, Optional[str]]:
         """
@@ -120,16 +257,28 @@ class PySparkASTParser(ast.NodeVisitor):
         df2 = df1.select(...).filter(...)
         df = spark.read.parquet("file")
         result = spark.sql("SELECT * FROM table")
+        alias = df  # Variable aliasing
+        result = df1.join(df2.filter(...), on="id")  # Nested expressions
         """
-
-        # Checking if the right-hand side of the assignment (node.value) is a function call (ast.Call).
-        # If it is not, the method exits early
-        if not isinstance(node.value, ast.Call):
-            return
 
         # Ensures that the left-hand side of the assignment (node.targets[0]) is a simple variable name (ast.Name).
         # This restriction ensures that only straightforward assignments like df2 = ... are processed, excluding more complex patterns like tuple unpacking.
         if not isinstance(node.targets[0], ast.Name):
+            return
+
+        target_name = node.targets[0].id
+
+        # Check for variable aliasing: other = df (right side is just a variable name)
+        if isinstance(node.value, ast.Name):
+            # This is an alias assignment like: alias = df
+            source_name = node.value.id
+            self.alias_map[target_name] = source_name
+            self.generic_visit(node)
+            return
+
+        # Checking if the right-hand side of the assignment (node.value) is a function call (ast.Call).
+        # If it is not, the method exits early
+        if not isinstance(node.value, ast.Call):
             return
 
         # Variable name on the left-hand side of the assignment
@@ -169,9 +318,13 @@ class PySparkASTParser(ast.NodeVisitor):
             return
 
         # Invoked on the right-hand side of the assignment to retrieve the sequence of method calls
-        call_chain = self._extract_call_chain(node.value)
-        if not call_chain:
+        call_chain, nested_ops = self._extract_call_chain(node.value, node.lineno)
+        if not call_chain and not nested_ops:
             return
+
+        # First, add any nested operations that were extracted from arguments
+        for nested_op in nested_ops:
+            self.operations.append(nested_op)
 
         # Iterates over the extracted call chain, creating a SparkOperationNode for each operation
         for idx, call in enumerate(call_chain):
@@ -197,19 +350,26 @@ class PySparkASTParser(ast.NodeVisitor):
         # Here, filter is a child node of the select call
         self.generic_visit(node)
 
-    def _extract_call_chain(self, call: ast.Call) -> List[dict]:
+    def _extract_call_chain(
+        self, call: ast.Call, lineno: int
+    ) -> Tuple[List[dict], List[SparkOperationNode]]:
         """
         Extracting the sequence of method calls (e.g., select, filter, groupBy, join)
         from a chained operation on a DataFrame.
 
+        Also extracts nested operations from arguments to multi-parent operations.
+
+        Args:
+            call: The AST Call node to extract from
+            lineno: Line number for generating unique IDs
+
         Returns:
-        [
-        {"op": "select", "parents": ["df"]},
-        {"op": "filter", "parents": ["df"]},
-        {"op": "join", "parents": ["df1", "df2"]}
-        ]
+            A tuple of:
+            - List of operation dicts: [{"op": "select", "parents": ["df"]}, ...]
+            - List of SparkOperationNode: Nested operations extracted from arguments
         """
         chain = []  # will store the extracted operations
+        nested_operations = []  # operations extracted from nested expressions
         current = call  # starts as the call node (e.g., the filter or join call)
         base_df = None  # Tracks the base DataFrame for the entire chain
         tmp = current
@@ -217,7 +377,8 @@ class PySparkASTParser(ast.NodeVisitor):
         while isinstance(tmp, ast.Call):
             if isinstance(tmp.func, ast.Attribute):
                 if isinstance(tmp.func.value, ast.Name):
-                    base_df = tmp.func.value.id
+                    # Resolve alias to get the original DataFrame
+                    base_df = self._resolve_alias(tmp.func.value.id)
                     break
                 tmp = tmp.func.value
             else:
@@ -235,8 +396,8 @@ class PySparkASTParser(ast.NodeVisitor):
                 # Detect base DataFrame only once
                 if base_df is None:
                     if isinstance(current.func.value, ast.Name):
-                        base_df = current.func.value.id
-                        print(f"Detected base DataFrame: {base_df}")
+                        # Resolve alias to get the original DataFrame
+                        base_df = self._resolve_alias(current.func.value.id)
 
                 # Unary operations inherit the base DataFrame
                 if op_name not in self.MULTI_PARENT_OPS:
@@ -245,7 +406,8 @@ class PySparkASTParser(ast.NodeVisitor):
                 else:
                     # The object on which the method is called (e.g., df1.join(...))
                     if isinstance(current.func.value, ast.Name):
-                        parents.append(current.func.value.id)
+                        # Resolve alias to get the original DataFrame
+                        parents.append(self._resolve_alias(current.func.value.id))
 
                     # Special handling for multi-parent operations like join
                     if op_name in self.MULTI_PARENT_OPS:
@@ -253,7 +415,19 @@ class PySparkASTParser(ast.NodeVisitor):
                         if current.args:
                             for arg in current.args:
                                 if isinstance(arg, ast.Name):
-                                    parents.append(arg.id)
+                                    # Resolve alias for each argument
+                                    parents.append(self._resolve_alias(arg.id))
+                                elif isinstance(arg, ast.Call):
+                                    # Check if this is a nested DataFrame operation chain
+                                    extracted_ops, result_df = (
+                                        self._extract_operations_from_expr(arg, lineno)
+                                    )
+                                    if extracted_ops:
+                                        # Add the extracted operations to our list
+                                        nested_operations.extend(extracted_ops)
+                                    if result_df:
+                                        # Use the anonymous df name as parent
+                                        parents.append(result_df)
 
                 chain.append(
                     {
@@ -268,7 +442,7 @@ class PySparkASTParser(ast.NodeVisitor):
                 break
 
         # The chain is reversed to maintain the original order of operations
-        return list(reversed(chain))
+        return list(reversed(chain)), nested_operations
 
     def visit_Expr(self, node: ast.Expr):
         """
@@ -285,13 +459,15 @@ class PySparkASTParser(ast.NodeVisitor):
         # Check for write pattern (df.write.*)
         is_write, base_df, write_op = self._is_write_pattern(node.value)
         if is_write and base_df and write_op:
+            # Resolve alias to get the original DataFrame
+            resolved_df = self._resolve_alias(base_df)
             # For write patterns, create a single write action node
-            node_id = f"{base_df}_write_{node.lineno}"
+            node_id = f"{resolved_df}_write_{node.lineno}"
             op_node = SparkOperationNode(
                 id=node_id,
-                df_name=base_df,
+                df_name=resolved_df,
                 operation="write",
-                parents=[base_df],
+                parents=[resolved_df],
                 lineno=node.lineno,
                 op_type=OpType.ACTION,
             )
@@ -299,8 +475,8 @@ class PySparkASTParser(ast.NodeVisitor):
             self.generic_visit(node)
             return
 
-        call_chain = self._extract_call_chain(node.value)
-        if not call_chain:
+        call_chain, nested_ops = self._extract_call_chain(node.value, node.lineno)
+        if not call_chain and not nested_ops:
             return
 
         # Try to infer the DF name from the base call
@@ -309,11 +485,16 @@ class PySparkASTParser(ast.NodeVisitor):
         while isinstance(current, ast.Call):
             if isinstance(current.func, ast.Attribute):
                 if isinstance(current.func.value, ast.Name):
-                    base_df = current.func.value.id
+                    # Resolve alias to get the original DataFrame
+                    base_df = self._resolve_alias(current.func.value.id)
                     break
                 current = current.func.value
             else:
                 break
+
+        # First, add any nested operations
+        for nested_op in nested_ops:
+            self.operations.append(nested_op)
 
         for call in call_chain:
             node_id = f"{base_df}_{call['op']}_{node.lineno}"
@@ -324,7 +505,7 @@ class PySparkASTParser(ast.NodeVisitor):
                 id=node_id,
                 df_name=base_df or "UNKNOWN",
                 operation=call["op"],
-                parents=call["parents"],
+                parents=call["parents"],  # Already resolved in _extract_call_chain
                 lineno=node.lineno,
                 op_type=op_type,
             )
@@ -340,3 +521,24 @@ class PySparkASTParser(ast.NodeVisitor):
         if isinstance(node, ast.Name):
             return node.id
         return "UNKNOWN"
+
+    def _resolve_alias(self, name: str) -> str:
+        """
+        Resolve a variable name through the alias chain to find the original DataFrame.
+
+        Handles chains like: a = df; b = a; c = b
+        _resolve_alias("c") -> "df"
+
+        Includes cycle detection to prevent infinite loops.
+        """
+        visited = set()
+        current = name
+
+        while current in self.alias_map:
+            if current in visited:
+                # Cycle detected, return the current name to avoid infinite loop
+                break
+            visited.add(current)
+            current = self.alias_map[current]
+
+        return current
