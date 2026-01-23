@@ -1,5 +1,5 @@
 import time
-import google.generativeai as genai
+from google import genai
 from app.config import settings
 import logging
 
@@ -23,9 +23,8 @@ class LLMRateLimitError(Exception):
 
 class GeminiClient:
     def __init__(self, model: str | None = None):
-        genai.configure(api_key=settings.gemini_api_key)
+        self.client = genai.Client(api_key=settings.gemini_api_key)
         self.model_name = model or settings.gemini_model
-        self.model = genai.GenerativeModel(self.model_name)
 
     def explain_pyspark(self, code: str) -> dict:
 
@@ -49,24 +48,25 @@ class GeminiClient:
 
                 prompt = f"""
                 Explain the following PySpark code:\n\n{code}
-                Be concise and clear in your explanation, don't expand too much. 
+                Be concise and clear in your explanation, don't expand too much.
                 Talk about the tradeoffs if any.
                 Add a paragraph at the end with suggestions to improve the code performance.
                 """
                 LLM_CALLS_TOTAL.labels(model=self.model_name).inc()
-                response = self.model.generate_content(prompt)
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                )
                 explanation = response.text
 
                 # Statistics
                 latency_ms = int((time.time() - start) * 1000)
 
                 # Extract usage stats safely
-                raw = response.to_dict()
-                usage = raw.get("usage_metadata", {})
-
-                tokens_used = usage.get("total_token_count", 0)
-                prompt_tokens = usage.get("prompt_token_count", 0)
-                completion_tokens = usage.get("candidates_token_count", 0)
+                usage = response.usage_metadata
+                tokens_used = usage.total_token_count if usage else 0
+                prompt_tokens = usage.prompt_token_count if usage else 0
+                completion_tokens = usage.candidates_token_count if usage else 0
 
                 return {
                     "model": self.model_name,
