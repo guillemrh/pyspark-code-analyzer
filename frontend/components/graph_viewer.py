@@ -1,14 +1,15 @@
-"""Graph viewer component with interactive visualization using streamlit-agraph."""
+"""Graph viewer component using Graphviz for reliable DAG rendering."""
 
 import streamlit as st
-from streamlit_agraph import agraph
 
-from utils.graph_converter import (
-    parse_dot_to_agraph,
-    get_dag_config,
-    get_lineage_config,
-    COLORS,
-)
+# Color scheme
+COLORS = {
+    "shuffle": "#C0392B",
+    "action": "#E67E22",
+    "transformation": "#3498DB",
+    "input": "#27AE60",
+    "default": "#7F8C8D",
+}
 
 
 def render_dag_legend():
@@ -31,10 +32,10 @@ def render_lineage_legend():
     st.markdown(
         f"""
         <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 10px;">
-            <span><span style="background-color: {COLORS['input']}; color: white; padding: 2px 8px; border-radius: 3px;">●</span> Source DataFrame</span>
+            <span><span style="background-color: {COLORS['input']}; color: white; padding: 2px 8px; border-radius: 3px;">●</span> Source</span>
             <span><span style="background-color: {COLORS['transformation']}; color: white; padding: 2px 8px; border-radius: 3px;">●</span> Intermediate</span>
-            <span><span style="background-color: {COLORS['shuffle']}; color: white; padding: 2px 8px; border-radius: 3px;">●</span> Join Result</span>
-            <span><span style="background-color: {COLORS['action']}; color: white; padding: 2px 8px; border-radius: 3px;">●</span> Final Output</span>
+            <span><span style="background-color: {COLORS['shuffle']}; color: white; padding: 2px 8px; border-radius: 3px;">●</span> Join</span>
+            <span><span style="background-color: {COLORS['action']}; color: white; padding: 2px 8px; border-radius: 3px;">●</span> Output</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -42,66 +43,94 @@ def render_lineage_legend():
 
 
 def render_dag_graph(dot_string: str) -> None:
-    """Render the Operation DAG graph using interactive agraph."""
+    """Render the Operation DAG graph using Graphviz."""
     if not dot_string:
         st.info("No DAG data available")
         return
 
     st.markdown("**Operation DAG** - Shows the execution flow of Spark operations")
-    st.caption("Drag nodes to rearrange. Scroll to zoom. Click and drag background to pan.")
     render_dag_legend()
 
-    try:
-        nodes, edges = parse_dot_to_agraph(dot_string, graph_type="dag")
-        if nodes:
-            agraph(nodes=nodes, edges=edges, config=get_dag_config())
-        else:
-            st.warning("No nodes found in the DAG")
-    except Exception as e:
-        st.warning(f"Interactive graph failed, falling back to static view: {e}")
-        _render_static_graph(dot_string)
+    styled_dot = _style_dag_dot(dot_string)
+    st.graphviz_chart(styled_dot, use_container_width=True)
 
 
 def render_lineage_graph(dot_string: str) -> None:
-    """Render the Data Lineage graph using interactive agraph."""
+    """Render the Data Lineage graph using Graphviz."""
     if not dot_string:
         st.info("No lineage data available")
         return
 
-    st.markdown(
-        "**Data Lineage** - Shows DataFrame dependencies and transformations"
-    )
-    st.caption("Drag nodes to rearrange. Scroll to zoom. Click and drag background to pan.")
+    st.markdown("**Data Lineage** - Shows DataFrame dependencies")
     render_lineage_legend()
 
-    try:
-        nodes, edges = parse_dot_to_agraph(dot_string, graph_type="lineage")
-        if nodes:
-            agraph(nodes=nodes, edges=edges, config=get_lineage_config())
-        else:
-            st.warning("No nodes found in the lineage graph")
-    except Exception as e:
-        st.warning(f"Interactive graph failed, falling back to static view: {e}")
-        _render_static_graph(dot_string)
+    styled_dot = _style_lineage_dot(dot_string)
+    st.graphviz_chart(styled_dot, use_container_width=True)
 
 
-# Dark theme styling for static Graphviz fallback
-DARK_THEME_ATTRS = '''
+def _style_dag_dot(dot_string: str) -> str:
+    """Apply dark theme styling to DAG DOT string."""
+    dark_theme = '''
   bgcolor="#0E1117"
-  node [fontcolor="white", color="white"]
-  edge [color="#888888"]
+  node [fontcolor="white", color="white", style="filled", fillcolor="#3498DB"]
+  edge [color="#888888", penwidth=1.5]
 '''
-
-
-def _apply_dark_theme(dot_string: str) -> str:
-    """Inject dark theme attributes into a DOT string."""
     if "{" in dot_string:
         idx = dot_string.index("{") + 1
-        return dot_string[:idx] + DARK_THEME_ATTRS + dot_string[idx:]
+        return dot_string[:idx] + dark_theme + dot_string[idx:]
     return dot_string
 
 
-def _render_static_graph(dot_string: str) -> None:
-    """Fallback to static Graphviz rendering."""
-    themed_dot = _apply_dark_theme(dot_string)
-    st.graphviz_chart(themed_dot, use_container_width=True)
+def _style_lineage_dot(dot_string: str) -> str:
+    """Apply styling to lineage DOT string with colored nodes based on position."""
+    import re
+
+    # Parse edges to determine node positions
+    edge_pattern = r'"([^"]+)"\s*->\s*"([^"]+)"'
+    edges = re.findall(edge_pattern, dot_string)
+
+    in_degree = {}
+    out_degree = {}
+    for source, target in edges:
+        in_degree[target] = in_degree.get(target, 0) + 1
+        out_degree[source] = out_degree.get(source, 0) + 1
+
+    # Get all nodes
+    all_nodes = set()
+    for s, t in edges:
+        all_nodes.add(s)
+        all_nodes.add(t)
+
+    # Build new DOT with styled nodes
+    lines = [
+        "digraph DataLineage {",
+        "  rankdir=LR;",
+        '  bgcolor="#0E1117";',
+        '  node [fontcolor="white", style="filled"];',
+        '  edge [color="#888888", penwidth=1.5];',
+    ]
+
+    for node in all_nodes:
+        node_in = in_degree.get(node, 0)
+        node_out = out_degree.get(node, 0)
+
+        if node_in == 0:
+            # Source node
+            color = COLORS["input"]
+        elif node_in > 1:
+            # Join node (multiple parents)
+            color = COLORS["shuffle"]
+        elif node_out == 0:
+            # Output node
+            color = COLORS["action"]
+        else:
+            # Intermediate
+            color = COLORS["transformation"]
+
+        lines.append(f'  "{node}" [fillcolor="{color}"];')
+
+    for source, target in edges:
+        lines.append(f'  "{source}" -> "{target}";')
+
+    lines.append("}")
+    return "\n".join(lines)
