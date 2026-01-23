@@ -9,10 +9,27 @@ result.write.parquet("output/summary")''',
 customers = spark.read.parquet("customers.parquet")
 joined = orders.join(customers, "customer_id")
 joined.show()''',
+    "Nested Expressions": '''df1 = spark.read.parquet("orders.parquet")
+df2 = spark.read.parquet("customers.parquet")
+result = df1.join(df2.filter(col("active") == True), on="customer_id")
+result.show()''',
+    "Variable Aliasing": '''df = spark.read.parquet("data.parquet")
+backup = df
+other = backup
+result = other.filter(col("x") > 10)
+result.show()''',
     "Multiple Actions (Anti-pattern)": '''df = spark.read.parquet("data.parquet")
 df.count()
 df.show()
 df.write.parquet("output")''',
+    "Cartesian Join (Anti-pattern)": '''df1 = spark.read.parquet("big.parquet")
+df2 = spark.read.parquet("other.parquet")
+cartesian = df1.crossJoin(df2)
+cartesian.show()''',
+    "Missing Unpersist (Anti-pattern)": '''df = spark.read.parquet("data.parquet")
+cached = df.cache()
+result1 = cached.filter(col("x") > 10).count()
+result2 = cached.groupBy("y").count().show()''',
     "Chained Transformations": '''df = spark.read.csv("input.csv", header=True)
 result = (df
     .filter(col("status") == "active")
