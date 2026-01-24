@@ -18,13 +18,25 @@ export interface ParsedGraph {
   edges: ParsedEdge[];
 }
 
+// Lineage specific types
+export interface ParsedLineageNode {
+  id: string;
+  label: string;
+  type: 'source' | 'derived';
+}
+
+export interface ParsedLineageGraph {
+  nodes: ParsedLineageNode[];
+  edges: ParsedEdge[];
+}
+
 // Shuffle operations that cause stage boundaries
-const SHUFFLE_OPS = new Set(['join', 'groupBy', 'repartition', 'distinct', 'coalesce', 'sortBy', 'orderBy']);
+const SHUFFLE_OPS = new Set(['join', 'groupby', 'repartition', 'distinct', 'coalesce', 'sortby', 'orderby']);
 const ACTION_OPS = new Set(['show', 'collect', 'count', 'write', 'save', 'foreach', 'take', 'first', 'head']);
-const INPUT_OPS = new Set(['read', 'parquet', 'csv', 'json', 'jdbc', 'table', 'load', 'textFile']);
+const INPUT_OPS = new Set(['read', 'parquet', 'csv', 'json', 'jdbc', 'table', 'load', 'textfile']);
 
 function detectNodeType(label: string): 'input' | 'transform' | 'shuffle' | 'action' {
-  const opName = label.split('\\n')[0].toLowerCase().trim();
+  const opName = label.split('\n')[0].toLowerCase().trim();
 
   if (INPUT_OPS.has(opName)) return 'input';
   if (ACTION_OPS.has(opName)) return 'action';
@@ -110,9 +122,61 @@ export function parseDot(dot: string): ParsedGraph {
   return { nodes, edges };
 }
 
+// Parse lineage DOT format
+export function parseLineageDot(dot: string): ParsedLineageGraph {
+  const nodes: ParsedLineageNode[] = [];
+  const edges: ParsedEdge[] = [];
+  const nodeSet = new Set<string>();
+  const hasIncomingEdge = new Set<string>();
+
+  if (!dot) {
+    return { nodes, edges };
+  }
+
+  // First pass: collect all edges to determine which nodes have incoming edges
+  const edgeRegex = /"([^"]+)"\s*->\s*"([^"]+)"/g;
+  let match;
+
+  while ((match = edgeRegex.exec(dot)) !== null) {
+    const source = match[1];
+    const target = match[2];
+    edges.push({ source, target });
+    hasIncomingEdge.add(target);
+    nodeSet.add(source);
+    nodeSet.add(target);
+  }
+
+  // Parse node definitions to get labels (if any)
+  const nodeRegex = /"([^"]+)"\s*\[([^\]]*)\]/g;
+  const nodeLabels = new Map<string, string>();
+
+  while ((match = nodeRegex.exec(dot)) !== null) {
+    const nodeId = match[1];
+    const attrs = match[2];
+    const labelMatch = attrs.match(/label="([^"]+)"/);
+    if (labelMatch) {
+      nodeLabels.set(nodeId, labelMatch[1]);
+    }
+    nodeSet.add(nodeId);
+  }
+
+  // Create nodes - source if no incoming edges, derived otherwise
+  nodeSet.forEach(nodeId => {
+    const label = nodeLabels.get(nodeId) || nodeId;
+    const isSource = !hasIncomingEdge.has(nodeId);
+    nodes.push({
+      id: nodeId,
+      label,
+      type: isSource ? 'source' : 'derived',
+    });
+  });
+
+  return { nodes, edges };
+}
+
 // Calculate node positions using a layered layout algorithm
 export function calculateLayout(
-  graph: ParsedGraph,
+  graph: ParsedGraph | ParsedLineageGraph,
   nodeWidth: number = 160,
   nodeHeight: number = 70,
   horizontalSpacing: number = 80,
@@ -190,8 +254,6 @@ export function calculateLayout(
   });
 
   // Calculate positions
-  const maxLayer = Math.max(...Array.from(layers.values()));
-
   layerGroups.forEach((nodeIds, layer) => {
     const totalHeight = nodeIds.length * nodeHeight + (nodeIds.length - 1) * verticalSpacing;
     const startY = -totalHeight / 2;
@@ -199,7 +261,7 @@ export function calculateLayout(
     nodeIds.forEach((nodeId, index) => {
       positions.set(nodeId, {
         x: layer * (nodeWidth + horizontalSpacing) + 50,
-        y: startY + index * (nodeHeight + verticalSpacing) + 100,
+        y: startY + index * (nodeHeight + verticalSpacing) + 150,
       });
     });
   });

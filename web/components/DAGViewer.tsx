@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useEffect } from 'react';
+import { useMemo, useEffect, memo } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -13,6 +13,7 @@ import ReactFlow, {
   Position,
   ConnectionMode,
   Panel,
+  Handle,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { motion } from 'framer-motion';
@@ -28,6 +29,7 @@ const nodeConfig = {
     glow: 'shadow-[0_0_30px_rgba(16,185,129,0.4)]',
     icon: Database,
     iconColor: 'text-emerald-400',
+    handleColor: '#10B981',
   },
   transform: {
     bg: 'from-blue-500/20 to-blue-600/10',
@@ -35,6 +37,7 @@ const nodeConfig = {
     glow: 'shadow-[0_0_20px_rgba(59,130,246,0.3)]',
     icon: GitBranch,
     iconColor: 'text-blue-400',
+    handleColor: '#3B82F6',
   },
   shuffle: {
     bg: 'from-orange-500/30 to-red-600/20',
@@ -42,6 +45,7 @@ const nodeConfig = {
     glow: 'shadow-[0_0_40px_rgba(249,115,22,0.5)]',
     icon: Zap,
     iconColor: 'text-orange-400',
+    handleColor: '#F97316',
   },
   action: {
     bg: 'from-amber-500/25 to-yellow-600/15',
@@ -49,11 +53,12 @@ const nodeConfig = {
     glow: 'shadow-[0_0_35px_rgba(245,158,11,0.45)]',
     icon: Play,
     iconColor: 'text-amber-400',
+    handleColor: '#F59E0B',
   },
 };
 
-// Custom DAG Node Component
-function DAGNodeComponent({ data }: { data: ParsedNode & { index: number } }) {
+// Custom DAG Node Component with Handles
+const DAGNodeComponent = memo(({ data }: { data: ParsedNode & { index: number } }) => {
   const config = nodeConfig[data.nodeType] || nodeConfig.transform;
   const Icon = config.icon;
 
@@ -72,6 +77,14 @@ function DAGNodeComponent({ data }: { data: ParsedNode & { index: number } }) {
         config.glow
       )}
     >
+      {/* Input Handle (left side) */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!w-3 !h-3 !border-2 !border-gray-700"
+        style={{ background: config.handleColor }}
+      />
+
       <div className="flex items-center gap-2 mb-1">
         <div className={cn('p-1.5 rounded-lg bg-black/30', config.iconColor)}>
           <Icon className="w-3.5 h-3.5" />
@@ -94,9 +107,19 @@ function DAGNodeComponent({ data }: { data: ParsedNode & { index: number } }) {
           )}
         </div>
       )}
+
+      {/* Output Handle (right side) */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!w-3 !h-3 !border-2 !border-gray-700"
+        style={{ background: config.handleColor }}
+      />
     </motion.div>
   );
-}
+});
+
+DAGNodeComponent.displayName = 'DAGNodeComponent';
 
 const nodeTypes = {
   dagNode: DAGNodeComponent,
@@ -115,7 +138,7 @@ export function DAGViewer({ dagDot, className }: DAGViewerProps) {
     }
 
     const parsed = parseDot(dagDot);
-    const positions = calculateLayout(parsed, 160, 80, 100, 50);
+    const positions = calculateLayout(parsed, 180, 90, 120, 60);
 
     // Calculate stage count
     const stages = new Set(parsed.nodes.map(n => n.stage).filter(s => s !== undefined));
@@ -133,11 +156,13 @@ export function DAGViewer({ dagDot, className }: DAGViewerProps) {
       };
     });
 
-    const edges: Edge[] = parsed.edges.map((edge, index) => {
+    const edges: Edge[] = parsed.edges.map((edge) => {
       // Determine edge style based on whether it crosses a stage boundary
       const sourceNode = parsed.nodes.find(n => n.id === edge.source);
       const targetNode = parsed.nodes.find(n => n.id === edge.target);
-      const crossesStage = sourceNode?.stage !== targetNode?.stage;
+      const crossesStage = sourceNode?.stage !== targetNode?.stage &&
+                           sourceNode?.stage !== undefined &&
+                           targetNode?.stage !== undefined;
 
       return {
         id: `e-${edge.source}-${edge.target}`,
@@ -232,7 +257,7 @@ export function DAGViewer({ dagDot, className }: DAGViewerProps) {
             <div className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
               {stageCount} Stage{stageCount !== 1 ? 's' : ''} • {nodes.length} Operations
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {[
                 { type: 'input', label: 'Input', color: 'bg-emerald-500' },
                 { type: 'transform', label: 'Transform', color: 'bg-blue-500' },

@@ -142,7 +142,7 @@ export function ResultsTabs({ result, className }: ResultsTabsProps) {
         </Tabs.Content>
 
         <Tabs.Content value="lineage" className="h-full data-[state=inactive]:hidden">
-          <LineageViewer lineage={result.lineage_graph} lineageDot={result.lineage_dot} />
+          <LineageViewer lineageDot={result.lineage_dot} />
         </Tabs.Content>
 
         <Tabs.Content value="stages" className="h-full data-[state=inactive]:hidden">

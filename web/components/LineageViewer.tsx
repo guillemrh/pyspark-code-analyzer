@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, memo } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -12,15 +12,16 @@ import ReactFlow, {
   MarkerType,
   Position,
   Panel,
+  Handle,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { motion } from 'framer-motion';
-import { LineageGraph, LineageNode as LineageNodeType } from '@/lib/types';
+import { parseLineageDot, calculateLayout, ParsedLineageNode } from '@/lib/dotParser';
 import { cn } from '@/lib/utils';
 import { Database, Table2, ArrowRight } from 'lucide-react';
 
-// Custom Lineage Node Component
-function LineageNodeComponent({ data }: { data: LineageNodeType & { index: number } }) {
+// Custom Lineage Node Component with Handles
+const LineageNodeComponent = memo(({ data }: { data: ParsedLineageNode & { index: number } }) => {
   const isSource = data.type === 'source';
 
   return (
@@ -38,6 +39,14 @@ function LineageNodeComponent({ data }: { data: LineageNodeType & { index: numbe
           : 'from-violet-500/25 to-purple-600/15 border-violet-500/60 shadow-[0_0_30px_rgba(139,92,246,0.35)]'
       )}
     >
+      {/* Input Handle (left side) */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!w-3 !h-3 !border-2 !border-gray-700"
+        style={{ background: isSource ? '#10B981' : '#8B5CF6' }}
+      />
+
       <div className="flex items-center gap-3">
         <div
           className={cn(
@@ -63,110 +72,71 @@ function LineageNodeComponent({ data }: { data: LineageNodeType & { index: numbe
           </span>
         </div>
       </div>
+
+      {/* Output Handle (right side) */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!w-3 !h-3 !border-2 !border-gray-700"
+        style={{ background: isSource ? '#10B981' : '#8B5CF6' }}
+      />
     </motion.div>
   );
-}
+});
+
+LineageNodeComponent.displayName = 'LineageNodeComponent';
 
 const nodeTypes = {
   lineageNode: LineageNodeComponent,
 };
 
 interface LineageViewerProps {
-  lineage: LineageGraph | null;
   lineageDot?: string;
   className?: string;
 }
 
-export function LineageViewer({ lineage, lineageDot, className }: LineageViewerProps) {
-  // Parse lineage graph and create React Flow nodes/edges
+export function LineageViewer({ lineageDot, className }: LineageViewerProps) {
+  // Parse lineage DOT and create React Flow nodes/edges
   const { initialNodes, initialEdges, sourceCount, derivedCount } = useMemo(() => {
-    if (!lineage || lineage.nodes.length === 0) {
+    if (!lineageDot) {
       return { initialNodes: [], initialEdges: [], sourceCount: 0, derivedCount: 0 };
     }
 
-    // Separate sources and derived
-    const sourceNodes = lineage.nodes.filter((n) => n.type === 'source');
-    const derivedNodes = lineage.nodes.filter((n) => n.type === 'derived');
+    const parsed = parseLineageDot(lineageDot);
 
-    // Build parent map for layout
-    const parentMap = new Map<string, string[]>();
-    lineage.nodes.forEach((n) => parentMap.set(n.id, []));
-    lineage.edges.forEach((e) => {
-      parentMap.get(e.target)?.push(e.source);
-    });
-
-    // Calculate layers
-    const layers = new Map<string, number>();
-
-    // Sources are layer 0
-    sourceNodes.forEach((n) => layers.set(n.id, 0));
-
-    // BFS to assign layers
-    const queue = [...sourceNodes.map((n) => n.id)];
-    const visited = new Set<string>(queue);
-
-    while (queue.length > 0) {
-      const nodeId = queue.shift()!;
-      const currentLayer = layers.get(nodeId) || 0;
-
-      // Find children
-      lineage.edges
-        .filter((e) => e.source === nodeId)
-        .forEach((e) => {
-          const existingLayer = layers.get(e.target);
-          if (existingLayer === undefined || currentLayer + 1 > existingLayer) {
-            layers.set(e.target, currentLayer + 1);
-          }
-          if (!visited.has(e.target)) {
-            visited.add(e.target);
-            queue.push(e.target);
-          }
-        });
+    if (parsed.nodes.length === 0) {
+      return { initialNodes: [], initialEdges: [], sourceCount: 0, derivedCount: 0 };
     }
 
-    // Group by layer
-    const layerGroups = new Map<number, string[]>();
-    layers.forEach((layer, nodeId) => {
-      if (!layerGroups.has(layer)) {
-        layerGroups.set(layer, []);
-      }
-      layerGroups.get(layer)!.push(nodeId);
-    });
+    const positions = calculateLayout(parsed, 180, 100, 140, 50);
 
-    // Create nodes with positions
-    const nodeWidth = 160;
-    const nodeHeight = 90;
-    const horizontalSpacing = 120;
-    const verticalSpacing = 40;
+    // Count sources and derived
+    const sourceNodes = parsed.nodes.filter((n) => n.type === 'source');
+    const derivedNodes = parsed.nodes.filter((n) => n.type === 'derived');
 
-    const nodes: Node[] = lineage.nodes.map((node, index) => {
-      const layer = layers.get(node.id) || 0;
-      const layerNodes = layerGroups.get(layer) || [];
-      const indexInLayer = layerNodes.indexOf(node.id);
-      const totalHeight = layerNodes.length * nodeHeight + (layerNodes.length - 1) * verticalSpacing;
+    // Create React Flow nodes
+    const nodes: Node[] = parsed.nodes.map((node, index) => {
+      const pos = positions.get(node.id) || { x: index * 200, y: 150 };
 
       return {
         id: node.id,
         type: 'lineageNode',
-        position: {
-          x: layer * (nodeWidth + horizontalSpacing) + 50,
-          y: -totalHeight / 2 + indexInLayer * (nodeHeight + verticalSpacing) + 150,
-        },
+        position: pos,
         data: { ...node, index },
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
       };
     });
 
-    // Create edges
-    const edges: Edge[] = lineage.edges.map((edge) => ({
+    // Create React Flow edges with gradient
+    const edges: Edge[] = parsed.edges.map((edge) => ({
       id: `e-${edge.source}-${edge.target}`,
       source: edge.source,
       target: edge.target,
       type: 'smoothstep',
       animated: true,
       style: {
-        stroke: 'url(#lineage-gradient)',
+        stroke: '#8B5CF6',
         strokeWidth: 3,
       },
       markerEnd: {
@@ -183,7 +153,7 @@ export function LineageViewer({ lineage, lineageDot, className }: LineageViewerP
       sourceCount: sourceNodes.length,
       derivedCount: derivedNodes.length,
     };
-  }, [lineage]);
+  }, [lineageDot]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -193,7 +163,7 @@ export function LineageViewer({ lineage, lineageDot, className }: LineageViewerP
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
 
-  if (!lineage || lineage.nodes.length === 0) {
+  if (!lineageDot || initialNodes.length === 0) {
     return (
       <div className={cn('flex flex-col items-center justify-center h-full text-center p-8', className)}>
         <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/10 flex items-center justify-center mb-4 shadow-[0_0_40px_rgba(139,92,246,0.3)]">
@@ -209,16 +179,6 @@ export function LineageViewer({ lineage, lineageDot, className }: LineageViewerP
 
   return (
     <div className={cn('h-full w-full', className)}>
-      {/* SVG Gradient Definition */}
-      <svg style={{ position: 'absolute', width: 0, height: 0 }}>
-        <defs>
-          <linearGradient id="lineage-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#10B981" />
-            <stop offset="100%" stopColor="#8B5CF6" />
-          </linearGradient>
-        </defs>
-      </svg>
-
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -238,7 +198,7 @@ export function LineageViewer({ lineage, lineageDot, className }: LineageViewerP
         />
         <MiniMap
           nodeColor={(node) => {
-            const type = (node.data as LineageNodeType)?.type;
+            const type = (node.data as ParsedLineageNode)?.type;
             return type === 'source' ? '#10B981' : '#8B5CF6';
           }}
           maskColor="rgba(0, 0, 0, 0.8)"
