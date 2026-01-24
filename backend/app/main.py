@@ -1,5 +1,6 @@
 # backend/app/main.py
 from fastapi import FastAPI, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from .api.routes import router
 from app.logging import setup_logging
@@ -53,6 +54,20 @@ FastAPI → Redis (cache/state/broker) → Celery workers → Analysis Pipeline 
         "name": "Internal Use",
     },
 )
+
+# CORS middleware for React frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",  # Next.js dev server
+        "http://127.0.0.1:3000",
+        "http://web:3000",  # Docker service name
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(router)
 
 tracer = setup_tracing("pyspark-llm-backend")
