@@ -109,18 +109,18 @@ export interface BackendLineageSummary {
   markdown: string;
 }
 
+export interface BackendAntipatternFinding {
+  severity: 'HIGH' | 'MEDIUM' | 'WARNING' | 'INFO';
+  message: string;
+  nodes: string[];
+  suggestion?: string;
+}
+
 export interface BackendAntipatternSummary {
   json: {
-    total_findings: number;
-    findings: Array<{
-      rule_name: string;
-      severity: 'HIGH' | 'MEDIUM' | 'WARNING' | 'INFO';
-      message: string;
-      affected_nodes: string[];
-      suggestion: string;
-      line_number?: number;
-    }>;
+    total_issues: number;
     by_severity: Record<string, number>;
+    by_rule: Record<string, BackendAntipatternFinding[]>;
   };
   markdown: string;
 }
@@ -202,15 +202,20 @@ export function transformBackendResult(backendResult: BackendJobResult): JobResu
     has_shuffle: s.has_shuffle_boundary,
   }));
 
-  // Transform anti-patterns
-  const antiPatterns: AntiPattern[] = (analysis.antipatterns?.json?.findings || []).map((f) => ({
-    rule_name: f.rule_name,
-    severity: f.severity,
-    message: f.message,
-    affected_nodes: f.affected_nodes,
-    suggestion: f.suggestion,
-    line_number: f.line_number,
-  }));
+  // Transform anti-patterns - flatten by_rule structure into array
+  const antiPatterns: AntiPattern[] = [];
+  const byRule = analysis.antipatterns?.json?.by_rule || {};
+  Object.entries(byRule).forEach(([ruleName, findings]) => {
+    findings.forEach((f) => {
+      antiPatterns.push({
+        rule_name: ruleName,
+        severity: f.severity,
+        message: f.message,
+        affected_nodes: f.nodes || [],
+        suggestion: f.suggestion || '',
+      });
+    });
+  });
 
   // Build metrics
   const dagJson = analysis.dag_summary?.json;
@@ -220,7 +225,7 @@ export function transformBackendResult(backendResult: BackendJobResult): JobResu
     actions: dagJson?.actions || 0,
     shuffles: dagJson?.wide_operations || 0,
     stages: dagJson?.stages || 0,
-    anti_patterns_found: analysis.antipatterns?.json?.total_findings || 0,
+    anti_patterns_found: analysis.antipatterns?.json?.total_issues || 0,
   };
 
   // Transform lineage graph from DOT or summary

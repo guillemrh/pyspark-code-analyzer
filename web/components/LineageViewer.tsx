@@ -142,8 +142,8 @@ export function LineageViewer({ lineageDot, className }: LineageViewerProps) {
       markerEnd: {
         type: MarkerType.ArrowClosed,
         color: '#8B5CF6',
-        width: 25,
-        height: 25,
+        width: 16,
+        height: 16,
       },
     }));
 
