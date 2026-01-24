@@ -103,11 +103,6 @@ export default function Home() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
-        <header className="h-14 px-6 flex items-center bg-bg-dark border-b border-white/10 shrink-0">
-          <span className="text-text-muted text-sm">Code Analysis</span>
-        </header>
-
         {/* Content area */}
         <div className="flex-1 flex min-h-0">
           {/* Code editor panel */}
