@@ -39,11 +39,12 @@ const LineageNodeComponent = memo(({ data }: { data: ParsedLineageNode & { index
           : 'from-violet-500/25 to-purple-600/15 border-violet-500/60 shadow-[0_0_30px_rgba(139,92,246,0.35)]'
       )}
     >
-      {/* Input Handle (left side) - invisible, just for edge connection */}
+      {/* Input Handle (left side) - positioned outside box so arrow stops at edge */}
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-2 !h-2 !border-0 !opacity-0"
+        className="!w-1 !h-1 !border-0 !bg-transparent"
+        style={{ left: -6 }}
       />
 
       <div className="flex items-center gap-3">
@@ -72,11 +73,12 @@ const LineageNodeComponent = memo(({ data }: { data: ParsedLineageNode & { index
         </div>
       </div>
 
-      {/* Output Handle (right side) - invisible, just for edge connection */}
+      {/* Output Handle (right side) - positioned outside box so line starts at edge */}
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-2 !h-2 !border-0 !opacity-0"
+        className="!w-1 !h-1 !border-0 !bg-transparent"
+        style={{ right: -6 }}
       />
     </motion.div>
   );
