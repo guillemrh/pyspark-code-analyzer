@@ -46,7 +46,7 @@ export function CodeEditor({
   return (
     <div className="flex flex-col h-full">
       {/* Editor header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-bg-medium border-b border-white/10">
+      <div className="flex items-center justify-between px-4 h-12 bg-bg-medium border-b border-white/10">
         <div className="flex items-center gap-2">
           <span className="text-text-primary font-medium">PySpark Code</span>
           <span className="text-text-muted text-sm">Python</span>
