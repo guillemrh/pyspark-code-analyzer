@@ -18,7 +18,7 @@ import 'reactflow/dist/style.css';
 import { motion } from 'framer-motion';
 import { parseLineageDot, calculateLayout, ParsedLineageNode } from '@/lib/dotParser';
 import { cn } from '@/lib/utils';
-import { Database, Table2, ArrowRight } from 'lucide-react';
+import { Database, Table2, ArrowRight, Info } from 'lucide-react';
 
 // Custom Lineage Node Component with Handles
 const LineageNodeComponent = memo(({ data }: { data: ParsedLineageNode & { index: number } }) => {
@@ -39,12 +39,11 @@ const LineageNodeComponent = memo(({ data }: { data: ParsedLineageNode & { index
           : 'from-violet-500/25 to-purple-600/15 border-violet-500/60 shadow-[0_0_30px_rgba(139,92,246,0.35)]'
       )}
     >
-      {/* Input Handle (left side) */}
+      {/* Input Handle (left side) - invisible, just for edge connection */}
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-3 !h-3 !border-2 !border-gray-700"
-        style={{ background: isSource ? '#10B981' : '#8B5CF6' }}
+        className="!w-2 !h-2 !border-0 !opacity-0"
       />
 
       <div className="flex items-center gap-3">
@@ -73,12 +72,11 @@ const LineageNodeComponent = memo(({ data }: { data: ParsedLineageNode & { index
         </div>
       </div>
 
-      {/* Output Handle (right side) */}
+      {/* Output Handle (right side) - invisible, just for edge connection */}
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-3 !h-3 !border-2 !border-gray-700"
-        style={{ background: isSource ? '#10B981' : '#8B5CF6' }}
+        className="!w-2 !h-2 !border-0 !opacity-0"
       />
     </motion.div>
   );
@@ -142,8 +140,8 @@ export function LineageViewer({ lineageDot, className }: LineageViewerProps) {
       markerEnd: {
         type: MarkerType.ArrowClosed,
         color: '#8B5CF6',
-        width: 16,
-        height: 16,
+        width: 12,
+        height: 12,
       },
     }));
 
@@ -205,24 +203,31 @@ export function LineageViewer({ lineageDot, className }: LineageViewerProps) {
           className="!bg-bg-dark !border-white/10 !rounded-xl overflow-hidden"
         />
 
-        {/* Legend Panel */}
+        {/* Info + Legend Panel */}
         <Panel position="top-left" className="!m-4">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-bg-medium/90 backdrop-blur-sm rounded-xl border border-white/10 p-3 shadow-xl"
+            className="bg-bg-medium/90 backdrop-blur-sm rounded-xl border border-white/10 p-3 shadow-xl max-w-xs"
           >
-            <div className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
+            <div className="flex items-start gap-2 mb-3">
+              <Info className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                <span className="text-white font-medium">Data Lineage</span> tracks how DataFrames depend on each other.
+                Arrows show data flow from sources to derived tables.
+              </p>
+            </div>
+            <div className="text-[10px] font-semibold text-gray-500 mb-2 uppercase tracking-wider">
               {sourceCount} Source{sourceCount !== 1 ? 's' : ''} → {derivedCount} Derived
             </div>
             <div className="flex gap-4">
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                <span className="text-[10px] text-gray-400">Source DataFrame</span>
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <span className="text-[10px] text-gray-400">Source</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-violet-500" />
-                <span className="text-[10px] text-gray-400">Derived DataFrame</span>
+                <div className="w-2.5 h-2.5 rounded-full bg-violet-500" />
+                <span className="text-[10px] text-gray-400">Derived</span>
               </div>
             </div>
           </motion.div>

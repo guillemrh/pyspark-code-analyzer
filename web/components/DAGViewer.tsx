@@ -19,7 +19,7 @@ import 'reactflow/dist/style.css';
 import { motion } from 'framer-motion';
 import { parseDot, calculateLayout, ParsedNode } from '@/lib/dotParser';
 import { cn } from '@/lib/utils';
-import { Layers, Zap, Database, GitBranch, Play } from 'lucide-react';
+import { Layers, Zap, Database, GitBranch, Play, Info } from 'lucide-react';
 
 // Node type colors and styles
 const nodeConfig = {
@@ -77,12 +77,11 @@ const DAGNodeComponent = memo(({ data }: { data: ParsedNode & { index: number } 
         config.glow
       )}
     >
-      {/* Input Handle (left side) */}
+      {/* Input Handle (left side) - invisible, just for edge connection */}
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-3 !h-3 !border-2 !border-gray-700"
-        style={{ background: config.handleColor }}
+        className="!w-2 !h-2 !border-0 !opacity-0"
       />
 
       <div className="flex items-center gap-2 mb-1">
@@ -108,12 +107,11 @@ const DAGNodeComponent = memo(({ data }: { data: ParsedNode & { index: number } 
         </div>
       )}
 
-      {/* Output Handle (right side) */}
+      {/* Output Handle (right side) - invisible, just for edge connection */}
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-3 !h-3 !border-2 !border-gray-700"
-        style={{ background: config.handleColor }}
+        className="!w-2 !h-2 !border-0 !opacity-0"
       />
     </motion.div>
   );
@@ -177,8 +175,8 @@ export function DAGViewer({ dagDot, className }: DAGViewerProps) {
         markerEnd: {
           type: MarkerType.ArrowClosed,
           color: crossesStage ? '#F97316' : '#6B7A94',
-          width: 20,
-          height: 20,
+          width: 12,
+          height: 12,
         },
       };
     });
@@ -247,14 +245,21 @@ export function DAGViewer({ dagDot, className }: DAGViewerProps) {
           className="!bg-bg-dark !border-white/10 !rounded-xl overflow-hidden"
         />
 
-        {/* Legend Panel */}
+        {/* Info + Legend Panel */}
         <Panel position="top-left" className="!m-4">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-bg-medium/90 backdrop-blur-sm rounded-xl border border-white/10 p-3 shadow-xl"
+            className="bg-bg-medium/90 backdrop-blur-sm rounded-xl border border-white/10 p-3 shadow-xl max-w-xs"
           >
-            <div className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
+            <div className="flex items-start gap-2 mb-3">
+              <Info className="w-4 h-4 text-spark-orange shrink-0 mt-0.5" />
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                <span className="text-white font-medium">Operation DAG</span> shows how Spark executes your code.
+                <span className="text-orange-400"> Orange edges</span> cross stage boundaries (shuffles).
+              </p>
+            </div>
+            <div className="text-[10px] font-semibold text-gray-500 mb-2 uppercase tracking-wider">
               {stageCount} Stage{stageCount !== 1 ? 's' : ''} • {nodes.length} Operations
             </div>
             <div className="flex flex-wrap gap-3">

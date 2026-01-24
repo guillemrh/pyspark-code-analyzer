@@ -68,6 +68,39 @@ function getOperationInfo(op: string) {
   return { description: 'Transformation operation', category: 'transform' as const };
 }
 
+// Generate a stage purpose description based on operations
+function getStagePurpose(operations: string[], hasShuffle: boolean): string {
+  const categories = operations.map(op => getOperationInfo(op).category);
+
+  const hasInput = categories.includes('input');
+  const hasAction = categories.includes('action');
+  const hasShuffleOp = categories.includes('shuffle');
+  const transformCount = categories.filter(c => c === 'transform').length;
+
+  if (hasInput && transformCount > 0) {
+    return 'Loads data and applies initial transformations. These operations run in parallel on each partition.';
+  }
+  if (hasInput) {
+    return 'Data ingestion stage - reads source data into Spark. Each partition is loaded independently.';
+  }
+  if (hasShuffleOp && hasAction) {
+    return 'Performs aggregation and collects results. The shuffle redistributes data across the cluster.';
+  }
+  if (hasShuffleOp) {
+    return 'Wide transformation stage - requires data shuffle across partitions. This is expensive but necessary for aggregations/joins.';
+  }
+  if (hasAction) {
+    return 'Action stage - triggers actual computation and returns results to the driver.';
+  }
+  if (hasShuffle) {
+    return 'Narrow transformations before a shuffle boundary. These run efficiently within each partition.';
+  }
+  if (transformCount > 0) {
+    return 'Narrow transformations that process data within partitions. No data movement required.';
+  }
+  return 'Processing stage with multiple operations.';
+}
+
 interface StagesTabProps {
   stages: Stage[];
 }
@@ -163,7 +196,7 @@ export function StagesTab({ stages }: StagesTabProps) {
                   'hover:border-white/20 transition-colors'
                 )}
               >
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2">
                   <h3 className="font-semibold text-text-primary flex items-center gap-2">
                     <span>Stage {stage.stage_id}</span>
                     {stage.has_shuffle && (
@@ -176,6 +209,11 @@ export function StagesTab({ stages }: StagesTabProps) {
                     {stage.node_count} operation{stage.node_count !== 1 ? 's' : ''}
                   </span>
                 </div>
+
+                {/* Stage purpose explanation */}
+                <p className="text-xs text-text-muted mb-3 leading-relaxed">
+                  {getStagePurpose(stage.operations, stage.has_shuffle)}
+                </p>
 
                 {/* Operations list with descriptions */}
                 <div className="space-y-2">

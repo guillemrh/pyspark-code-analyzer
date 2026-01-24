@@ -174,6 +174,27 @@ export function AntiPatternsTab({ patterns }: AntiPatternsTabProps) {
 
   return (
     <div className="h-full overflow-y-auto p-6">
+      {/* Explanation header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6 p-4 rounded-lg bg-bg-medium/50 border border-white/10"
+      >
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-lg bg-severity-warning/10">
+            <AlertTriangle className="w-4 h-4 text-severity-warning" />
+          </div>
+          <div>
+            <h4 className="font-medium text-text-primary mb-1">Performance Issues</h4>
+            <p className="text-sm text-text-muted">
+              These patterns may cause performance problems in production.
+              <span className="text-severity-high"> High impact</span> issues should be fixed first,
+              while <span className="text-severity-info">suggestions</span> are optional optimizations.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+
       {/* Summary */}
       <div className="flex gap-4 mb-6 flex-wrap">
         {Object.entries(groupedPatterns).map(([severity, items]) => {
