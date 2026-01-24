@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Code2, History, ChevronRight, Sparkles } from 'lucide-react';
+import { Code2, History, ChevronRight, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CODE_EXAMPLES } from '@/lib/examples';
 import { CodeExample } from '@/lib/types';
@@ -17,15 +17,12 @@ export function Sidebar({ onSelectExample, recentJobs = [] }: SidebarProps) {
   return (
     <aside className="w-72 h-full bg-bg-dark border-r border-white/10 flex flex-col">
       {/* Logo */}
-      <div className="p-6 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-spark-orange to-spark-orange-dark flex items-center justify-center shadow-glow-orange">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="font-display text-lg text-text-primary">PySpark</h1>
-            <p className="text-xs text-text-muted">Intelligence Platform</p>
-          </div>
+      <div className="p-5 border-b border-white/10">
+        <div className="flex items-center gap-2">
+          <Zap className="w-5 h-5 text-spark-orange" />
+          <span className="text-text-primary font-semibold tracking-tight">
+            Spark<span className="text-spark-orange">Lens</span>
+          </span>
         </div>
       </div>
 

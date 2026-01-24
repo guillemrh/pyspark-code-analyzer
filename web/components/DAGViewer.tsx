@@ -9,7 +9,6 @@ import ReactFlow, {
   MiniMap,
   useNodesState,
   useEdgesState,
-  MarkerType,
   Position,
   ConnectionMode,
   Panel,
@@ -77,12 +76,11 @@ const DAGNodeComponent = memo(({ data }: { data: ParsedNode & { index: number } 
         config.glow
       )}
     >
-      {/* Input Handle (left side) - positioned outside box so arrow stops at edge */}
+      {/* Input Handle (left side) - moved outside box */}
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-1 !h-1 !border-0 !bg-transparent"
-        style={{ left: -6 }}
+        className="!w-2 !h-2 !border-0 !bg-transparent !-translate-x-4"
       />
 
       <div className="flex items-center gap-2 mb-1">
@@ -108,12 +106,11 @@ const DAGNodeComponent = memo(({ data }: { data: ParsedNode & { index: number } 
         </div>
       )}
 
-      {/* Output Handle (right side) - positioned outside box so line starts at edge */}
+      {/* Output Handle (right side) - moved outside box */}
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-1 !h-1 !border-0 !bg-transparent"
-        style={{ right: -6 }}
+        className="!w-2 !h-2 !border-0 !bg-transparent !translate-x-4"
       />
     </motion.div>
   );
@@ -174,12 +171,7 @@ export function DAGViewer({ dagDot, className }: DAGViewerProps) {
           stroke: crossesStage ? '#F97316' : '#6B7A94',
           strokeWidth: crossesStage ? 3 : 2,
         },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: crossesStage ? '#F97316' : '#6B7A94',
-          width: 12,
-          height: 12,
-        },
+        markerEnd: crossesStage ? 'url(#arrow-orange)' : 'url(#arrow-gray)',
       };
     });
 
@@ -224,6 +216,33 @@ export function DAGViewer({ dagDot, className }: DAGViewerProps) {
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
       >
+        {/* Custom arrow markers */}
+        <svg style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0 }}>
+          <defs>
+            <marker
+              id="arrow-gray"
+              viewBox="0 0 10 10"
+              refX="5"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#6B7A94" />
+            </marker>
+            <marker
+              id="arrow-orange"
+              viewBox="0 0 10 10"
+              refX="5"
+              refY="5"
+              markerWidth="8"
+              markerHeight="8"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#F97316" />
+            </marker>
+          </defs>
+        </svg>
         <Background
           color="#1E2633"
           gap={24}

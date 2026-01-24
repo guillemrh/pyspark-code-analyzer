@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { AnimatePresence } from 'framer-motion';
 import { Sidebar } from '@/components/Sidebar';
 import { CodeEditor } from '@/components/CodeEditor';
-import { JobStatus } from '@/components/JobStatus';
 import { ResultsTabs } from '@/components/ResultsTabs';
 import { useJobPolling } from '@/hooks/useJobPolling';
 import { submitCode, APIError } from '@/lib/api';
@@ -100,20 +98,9 @@ export default function Home() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar with status */}
-        <header className="h-14 px-6 flex items-center justify-between bg-bg-dark border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-4">
-            <span className="text-text-muted text-sm">Code Analysis</span>
-          </div>
-          <AnimatePresence mode="wait">
-            <JobStatus
-              status={jobStatus}
-              progress={undefined}
-              message={pollingData?.status === 'analysis_complete' ? 'Generating explanation...' : undefined}
-              error={error || undefined}
-              jobId={jobId || undefined}
-            />
-          </AnimatePresence>
+        {/* Top bar */}
+        <header className="h-14 px-6 flex items-center bg-bg-dark border-b border-white/10 shrink-0">
+          <span className="text-text-muted text-sm">Code Analysis</span>
         </header>
 
         {/* Content area */}
@@ -131,7 +118,12 @@ export default function Home() {
 
           {/* Results panel */}
           <div className="w-1/2 flex flex-col min-h-0">
-            <ResultsTabs result={result} />
+            <ResultsTabs
+              result={result}
+              isLoading={isLoading}
+              loadingMessage={pollingData?.status === 'analysis_complete' ? 'Generating explanation...' : undefined}
+              error={error || undefined}
+            />
           </div>
         </div>
       </div>

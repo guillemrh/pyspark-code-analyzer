@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,8 @@ import {
   AlertTriangle,
   GitBranch,
   Network,
+  Loader2,
+  XCircle,
 } from 'lucide-react';
 
 interface TabConfig {
@@ -27,11 +29,29 @@ interface TabConfig {
 
 interface ResultsTabsProps {
   result: JobResult | null;
+  isLoading?: boolean;
+  loadingMessage?: string;
+  error?: string;
   className?: string;
 }
 
-export function ResultsTabs({ result, className }: ResultsTabsProps) {
+export function ResultsTabs({ result, isLoading, loadingMessage, error, className }: ResultsTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('explanation');
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  // Timer for loading state
+  useEffect(() => {
+    if (!isLoading) {
+      setElapsedSeconds(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setElapsedSeconds((s) => s + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   const tabs: TabConfig[] = [
     {
@@ -62,6 +82,69 @@ export function ResultsTabs({ result, className }: ResultsTabsProps) {
       badge: result?.anti_patterns?.length,
     },
   ];
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className={cn('flex items-center justify-center h-full', className)}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center p-8"
+        >
+          <div className="w-20 h-20 rounded-full bg-spark-orange/10 flex items-center justify-center mx-auto mb-6">
+            <Loader2 className="w-10 h-10 text-spark-orange animate-spin" />
+          </div>
+          <h3 className="text-lg font-medium text-text-primary mb-2">
+            Analyzing Code
+          </h3>
+          <p className="text-sm text-text-muted max-w-md mb-2">
+            {loadingMessage || 'Parsing operations, building DAG, and generating insights...'}
+          </p>
+          <p className="text-xs text-text-muted mb-6">
+            {elapsedSeconds}s
+          </p>
+          {/* Progress bar */}
+          <div className="w-64 mx-auto h-1.5 bg-bg-light rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-spark-orange rounded-full"
+              animate={{
+                x: ['-100%', '100%'],
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: 1.5,
+                ease: 'linear',
+              }}
+            />
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error && !result) {
+    return (
+      <div className={cn('flex items-center justify-center h-full', className)}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center p-8"
+        >
+          <div className="w-16 h-16 rounded-full bg-severity-high/10 flex items-center justify-center mx-auto mb-4">
+            <XCircle className="w-8 h-8 text-severity-high" />
+          </div>
+          <h3 className="text-lg font-medium text-text-primary mb-2">
+            Analysis Failed
+          </h3>
+          <p className="text-sm text-severity-high max-w-md">
+            {error}
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (!result) {
     return (
