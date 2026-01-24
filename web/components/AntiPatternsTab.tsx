@@ -102,17 +102,69 @@ function AntiPatternCard({ pattern, index }: AntiPatternCardProps) {
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
-          className="border-t border-white/10"
+          className="bg-bg-dark"
         >
           <div className="p-4 space-y-4">
             {/* Suggestion */}
-            <div className="flex gap-3">
-              <Lightbulb className="w-4 h-4 text-node-action shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs text-text-muted mb-1">Suggestion</p>
-                <p className="text-sm text-text-secondary">{pattern.suggestion}</p>
-              </div>
-            </div>
+            {pattern.suggestion && (() => {
+              const suggestionStyles = {
+                HIGH: {
+                  bg: 'bg-red-500/15',
+                  border: 'border-red-500/30',
+                  icon: 'text-red-400',
+                },
+                MEDIUM: {
+                  bg: 'bg-orange-500/15',
+                  border: 'border-orange-500/30',
+                  icon: 'text-orange-400',
+                },
+                WARNING: {
+                  bg: 'bg-yellow-500/15',
+                  border: 'border-yellow-500/30',
+                  icon: 'text-yellow-400',
+                },
+                INFO: {
+                  bg: 'bg-blue-500/15',
+                  border: 'border-blue-500/30',
+                  icon: 'text-blue-400',
+                },
+              };
+              const style = suggestionStyles[pattern.severity] || suggestionStyles.INFO;
+
+              // Separate comments from code
+              const lines = pattern.suggestion.split('\n');
+              const comments: string[] = [];
+              const codeLines: string[] = [];
+
+              lines.forEach(line => {
+                const trimmed = line.trim();
+                if (!trimmed) return;
+                if (trimmed.startsWith('#')) {
+                  comments.push(trimmed.replace(/^#\s?/, ''));
+                } else {
+                  codeLines.push(line);
+                }
+              });
+
+              return (
+                <div className={cn('rounded-lg border p-4', style.bg, style.border)}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Lightbulb className={cn('w-4 h-4', style.icon)} />
+                    <span className={cn('text-sm font-medium', style.icon)}>Suggestion</span>
+                  </div>
+                  {comments.length > 0 && (
+                    <p className="text-sm text-text-primary mb-3">
+                      {comments.join(' ')}
+                    </p>
+                  )}
+                  {codeLines.length > 0 && (
+                    <pre className="text-sm font-mono bg-black/40 rounded-lg p-3 overflow-x-auto text-text-primary">
+                      {codeLines.join('\n')}
+                    </pre>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Affected nodes */}
             {pattern.affected_nodes.length > 0 && (
