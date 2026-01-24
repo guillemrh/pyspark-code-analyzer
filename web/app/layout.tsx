@@ -20,11 +20,8 @@ const dmSerif = DM_Serif_Display({
 });
 
 export const metadata: Metadata = {
-  title: 'PySpark Intelligence Platform',
+  title: 'SparkLens',
   description: 'Analyze PySpark code with AI-powered explanations, DAG visualization, and performance recommendations',
-  icons: {
-    icon: '/favicon.ico',
-  },
 };
 
 export default function RootLayout({

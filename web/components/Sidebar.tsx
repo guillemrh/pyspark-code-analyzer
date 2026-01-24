@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Code2, History, ChevronRight, Zap } from 'lucide-react';
+import { Code2, History, ChevronRight, Zap, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CODE_EXAMPLES } from '@/lib/examples';
 import { CodeExample } from '@/lib/types';
@@ -9,20 +9,47 @@ import { CodeExample } from '@/lib/types';
 interface SidebarProps {
   onSelectExample: (example: CodeExample) => void;
   recentJobs?: { id: string; timestamp: Date; preview: string }[];
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export function Sidebar({ onSelectExample, recentJobs = [] }: SidebarProps) {
+export function Sidebar({ onSelectExample, recentJobs = [], isCollapsed = false, onToggleCollapse }: SidebarProps) {
   const [expandedSection, setExpandedSection] = useState<'examples' | 'history' | null>('examples');
+
+  if (isCollapsed) {
+    return (
+      <aside className="w-12 h-full bg-bg-dark border-r border-white/10 flex flex-col items-center py-4">
+        <button
+          onClick={onToggleCollapse}
+          className="p-2 rounded-lg hover:bg-bg-medium/50 transition-colors text-text-muted hover:text-text-primary"
+          title="Expand sidebar"
+        >
+          <PanelLeft className="w-5 h-5" />
+        </button>
+      </aside>
+    );
+  }
 
   return (
     <aside className="w-72 h-full bg-bg-dark border-r border-white/10 flex flex-col">
       {/* Logo */}
       <div className="p-5 border-b border-white/10">
-        <div className="flex items-center gap-2">
-          <Zap className="w-5 h-5 text-spark-orange" />
-          <span className="text-text-primary font-semibold tracking-tight">
-            Spark<span className="text-spark-orange">Lens</span>
-          </span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="w-5 h-5 text-spark-orange" />
+            <span className="text-text-primary font-semibold tracking-tight">
+              Spark<span className="text-spark-orange">Lens</span>
+            </span>
+          </div>
+          {onToggleCollapse && (
+            <button
+              onClick={onToggleCollapse}
+              className="p-1.5 rounded-lg hover:bg-bg-medium/50 transition-colors text-text-muted hover:text-text-primary"
+              title="Collapse sidebar"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 

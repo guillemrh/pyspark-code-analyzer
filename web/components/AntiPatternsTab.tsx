@@ -131,8 +131,9 @@ function AntiPatternCard({ pattern, index }: AntiPatternCardProps) {
               };
               const style = suggestionStyles[pattern.severity] || suggestionStyles.INFO;
 
-              // Separate comments from code
+              // Separate line reference, comments, and code
               const lines = pattern.suggestion.split('\n');
+              let lineReference = '';
               const comments: string[] = [];
               const codeLines: string[] = [];
 
@@ -140,7 +141,13 @@ function AntiPatternCard({ pattern, index }: AntiPatternCardProps) {
                 const trimmed = line.trim();
                 if (!trimmed) return;
                 if (trimmed.startsWith('#')) {
-                  comments.push(trimmed.replace(/^#\s?/, ''));
+                  const text = trimmed.replace(/^#\s?/, '');
+                  // Check if this is a line reference (e.g., "Line 33: ...")
+                  if (text.match(/^Line \d+:/i) && !lineReference) {
+                    lineReference = text;
+                  } else {
+                    comments.push(text);
+                  }
                 } else {
                   codeLines.push(line);
                 }
@@ -152,6 +159,11 @@ function AntiPatternCard({ pattern, index }: AntiPatternCardProps) {
                     <Lightbulb className={cn('w-4 h-4', style.icon)} />
                     <span className={cn('text-sm font-medium', style.icon)}>Suggestion</span>
                   </div>
+                  {lineReference && (
+                    <p className="text-xs text-text-muted mb-3 font-mono">
+                      {lineReference}
+                    </p>
+                  )}
                   {comments.length > 0 && (
                     <p className="text-sm text-text-primary mb-3">
                       {comments.join(' ')}

@@ -19,6 +19,7 @@ export default function Home() {
   const [result, setResult] = useState<JobResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Polling hook
   const { data: pollingData, isPolling, isFinished, isFailed } = useJobPolling({
@@ -94,7 +95,11 @@ export default function Home() {
   return (
     <div className="flex h-screen bg-bg-darkest">
       {/* Sidebar */}
-      <Sidebar onSelectExample={handleSelectExample} />
+      <Sidebar
+        onSelectExample={handleSelectExample}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
