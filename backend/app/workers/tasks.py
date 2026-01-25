@@ -137,7 +137,7 @@ def explain_code_task(
                 },
             )
 
-        except LLMRateLimitError:
+        except LLMRateLimitError as e:
             # Rate limit - will be retried automatically by Celery
             job_duration_ms = int((time.time() - task_start) * 1000)
             logger.warning(
@@ -149,6 +149,24 @@ def explain_code_task(
                     "component": "celery_worker",
                 },
             )
+            # Check if this is the last retry
+            if self.request.retries >= self.max_retries:
+                JOBS_FAILED_TOTAL.inc()
+                update(
+                    "failed",
+                    {
+                        "error": {
+                            "type": "RateLimitError",
+                            "message": "API rate limit exceeded. Please try again later.",
+                        }
+                    },
+                )
+                return {
+                    "job_id": job_id,
+                    "status": "failed",
+                    "job_duration_ms": job_duration_ms,
+                    "cached": False,
+                }
             raise  # Let Celery handle retry
 
         except Exception as e:
