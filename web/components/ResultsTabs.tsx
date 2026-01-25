@@ -172,13 +172,13 @@ export function ResultsTabs({ result, isLoading, loadingMessage, error, classNam
       className={cn('flex flex-col h-full', className)}
     >
       {/* Tab list */}
-      <Tabs.List className="flex border-b border-white/10 px-4 h-12 bg-bg-medium shrink-0">
+      <Tabs.List className="flex border-b border-white/10 px-4 bg-bg-medium shrink-0">
         {tabs.map((tab) => (
           <Tabs.Trigger
             key={tab.id}
             value={tab.id}
             className={cn(
-              'relative flex items-center gap-2 px-4 py-3 text-sm font-medium',
+              'relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium',
               'text-text-muted hover:text-text-secondary transition-colors',
               'data-[state=active]:text-text-primary',
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-spark-orange/50'
