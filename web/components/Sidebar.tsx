@@ -33,7 +33,7 @@ export function Sidebar({ onSelectExample, recentJobs = [], isCollapsed = false,
   return (
     <aside className="w-72 h-full bg-bg-dark border-r border-white/10 flex flex-col">
       {/* Logo */}
-      <div className="p-5 border-b border-white/10">
+      <div className="px-5 h-[60px] flex items-center border-b border-white/10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-spark-orange" />
