@@ -137,7 +137,7 @@ def explain_code_task(
                 },
             )
 
-        except LLMRateLimitError as e:
+        except LLMRateLimitError:
             # Rate limit - will be retried automatically by Celery
             job_duration_ms = int((time.time() - task_start) * 1000)
             logger.warning(
