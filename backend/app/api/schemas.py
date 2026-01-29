@@ -8,9 +8,11 @@ class CodeRequest(BaseModel):
         min_length=1,
         max_length=100_000,
         description="PySpark code to analyze (max 100,000 characters)",
-        examples=["""df = spark.read.parquet("data.parquet")
+        examples=[
+            """df = spark.read.parquet("data.parquet")
 df_filtered = df.filter(df.age > 25)
-df_filtered.show()"""],
+df_filtered.show()"""
+        ],
     )
 
     @field_validator("code")

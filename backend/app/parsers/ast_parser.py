@@ -140,9 +140,7 @@ class PySparkASTParser(ast.NodeVisitor):
                                 and isinstance(arg.args[0], ast.Name)
                             ):
                                 # Handle wrapper functions like broadcast(df)
-                                parents.append(
-                                    self._resolve_alias(arg.args[0].id)
-                                )
+                                parents.append(self._resolve_alias(arg.args[0].id))
 
                 chain.append({"op": op_name, "parents": parents, "df_name": None})
                 current = current.func.value
