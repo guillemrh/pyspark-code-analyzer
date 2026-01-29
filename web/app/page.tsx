@@ -84,6 +84,14 @@ export default function Home() {
     }
   }, [code]);
 
+  // Cancel current job
+  const handleCancel = useCallback(() => {
+    setJobId(null);
+    setJobStatus('idle');
+    setIsSubmitting(false);
+    setError(null);
+  }, []);
+
   // Handle example selection
   const handleSelectExample = useCallback((example: CodeExample) => {
     setCode(example.code);
@@ -111,6 +119,7 @@ export default function Home() {
               value={code}
               onChange={setCode}
               onSubmit={handleSubmit}
+              onCancel={handleCancel}
               isLoading={isLoading}
               error={error}
             />

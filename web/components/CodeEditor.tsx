@@ -3,13 +3,14 @@
 import { useRef, useCallback } from 'react';
 import Editor, { OnMount, OnChange } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
-import { Play, Loader2 } from 'lucide-react';
+import { Play, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
+  onCancel?: () => void;
   isLoading?: boolean;
   error?: string | null;
 }
@@ -18,6 +19,7 @@ export function CodeEditor({
   value,
   onChange,
   onSubmit,
+  onCancel,
   isLoading = false,
   error = null,
 }: CodeEditorProps) {
@@ -46,15 +48,20 @@ export function CodeEditor({
   return (
     <div className="flex flex-col h-full">
       {/* Editor header */}
-      <div className="flex items-center justify-between px-4 h-[60px] bg-bg-medium border-b border-white/10">
-        <div className="flex items-center gap-2">
-          <span className="text-text-primary font-medium">PySpark Code</span>
-          <span className="text-text-muted text-sm">Python</span>
-        </div>
+      <div className="flex items-center justify-end px-4 h-[60px] bg-bg-medium border-b border-white/10">
         <div className="flex items-center gap-2">
           <span className="text-text-muted text-xs">
             {isLoading ? 'Processing...' : 'Ctrl+Enter to analyze'}
           </span>
+          {isLoading && onCancel ? (
+            <button
+              onClick={onCancel}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all bg-bg-light hover:bg-bg-elevated text-text-secondary border border-white/10"
+            >
+              <X className="w-4 h-4" />
+              Cancel
+            </button>
+          ) : null}
           <button
             onClick={onSubmit}
             disabled={isLoading || !value.trim()}
