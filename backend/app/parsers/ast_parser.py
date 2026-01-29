@@ -133,6 +133,16 @@ class PySparkASTParser(ast.NodeVisitor):
                                     )
                             if nested_df:
                                 parents.append(nested_df)
+                            elif (
+                                not nested_ops
+                                and isinstance(arg.func, ast.Name)
+                                and arg.args
+                                and isinstance(arg.args[0], ast.Name)
+                            ):
+                                # Handle wrapper functions like broadcast(df)
+                                parents.append(
+                                    self._resolve_alias(arg.args[0].id)
+                                )
 
                 chain.append({"op": op_name, "parents": parents, "df_name": None})
                 current = current.func.value
@@ -428,6 +438,16 @@ class PySparkASTParser(ast.NodeVisitor):
                                     if result_df:
                                         # Use the anonymous df name as parent
                                         parents.append(result_df)
+                                    elif (
+                                        not extracted_ops
+                                        and isinstance(arg.func, ast.Name)
+                                        and arg.args
+                                        and isinstance(arg.args[0], ast.Name)
+                                    ):
+                                        # Handle wrapper functions like broadcast(df)
+                                        parents.append(
+                                            self._resolve_alias(arg.args[0].id)
+                                        )
 
                 chain.append(
                     {
