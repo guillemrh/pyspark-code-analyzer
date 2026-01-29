@@ -48,7 +48,7 @@ The system follows a **request → cache → async execution → aggregation** m
 - FastAPI handles validation, orchestration, and status tracking
 - Redis provides caching, rate limiting, and job state
 - Celery workers execute CPU- and LLM-heavy tasks
-- Streamlit provides an interactive UI
+- Next.js/React provides an interactive UI
 - Prometheus and structured logs provide observability
 
 ---
@@ -107,12 +107,30 @@ The system follows a **request → cache → async execution → aggregation** m
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   └── README.md
-├── frontend/
-│   ├── streamlit_app.py            # Streamlit UI
+├── web/                             # Next.js/React frontend
+│   ├── app/
+│   │   ├── layout.tsx               # Root layout
+│   │   ├── page.tsx                 # Main page (3-panel layout)
+│   │   └── globals.css              # Global styles & CSS variables
+│   ├── components/
+│   │   ├── Sidebar.tsx              # Collapsible sidebar with examples
+│   │   ├── CodeEditor.tsx           # Monaco editor with analyze/cancel
+│   │   ├── ResultsTabs.tsx          # Tabbed results container
+│   │   ├── ExplanationTab.tsx       # AI explanation + metrics bar
+│   │   ├── DAGViewer.tsx            # Interactive operation DAG
+│   │   ├── LineageViewer.tsx        # Data lineage graph
+│   │   ├── StagesTab.tsx            # Stage breakdown
+│   │   └── AntiPatternsTab.tsx      # Performance issues
+│   ├── hooks/
+│   │   └── useJobPolling.ts         # Job status polling hook
+│   ├── lib/
+│   │   ├── api.ts                   # API client
+│   │   ├── types.ts                 # TypeScript types
+│   │   └── examples.ts             # Code examples
 │   ├── Dockerfile
-│   └── README.md
-├── docker-compose.yml              # Multi-service orchestration
-└── README.md                       # Project-level documentation
+│   └── package.json
+├── docker-compose.yml               # Multi-service orchestration
+└── README.md                        # Project-level documentation
 ```
 
 ---
@@ -134,9 +152,9 @@ Follow the `.env.example` to create a `.env` file with your variables values.
 ### Start the Application
 
 - `docker compose up --build`
-- Streamlit UI: http://localhost:8501
-- FastAPI backend: http://localhost:8000
-- Prometheus metrics: http://localhost:8000/metrics
+- Web UI: http://localhost:3000
+- FastAPI backend: http://localhost:8050
+- Prometheus metrics: http://localhost:9090
 - Jaeger UI: http://localhost:16686
 
 ---
@@ -209,11 +227,10 @@ This project is structured as a multi-stage system that grows into a **Spark ETL
 
 ## Future Improvements
 
-- Visual DAG rendering
 - Multi-file project analysis
 - Version comparison
-- Interactive lineage graphs
 - Performance recommendations
+- Collaborative analysis sharing
 
 ---
 

@@ -92,13 +92,13 @@ services:
           cpus: "0.1"
           memory: 128M
 
-  frontend:
-    build: ./frontend
-    container_name: pyspark-llm-frontend
+  web:
+    build: ./web
+    container_name: pyspark-llm-web
     environment:
-      - BACKEND_URL=http://backend:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8050
     ports:
-      - "8501:8501"
+      - "3000:3000"
     depends_on:
       backend:
         condition: service_healthy
@@ -107,7 +107,7 @@ services:
       resources:
         limits:
           cpus: "0.5"
-          memory: 256M
+          memory: 512M
         reservations:
           cpus: "0.1"
-          memory: 128M
+          memory: 256M
