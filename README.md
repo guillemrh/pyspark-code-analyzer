@@ -4,6 +4,10 @@ A distributed, observable system for **static analysis, execution graph extracti
 
 This project goes beyond simple code explanation and evolves into a **Spark ETL intelligence layer** capable of understanding transformations, execution stages, data lineage, and performance anti-patterns — all exposed through a production-grade architecture.
 
+## Demo
+
+![Demo](docs/demo.gif)
+
 ---
 
 ## Overview
