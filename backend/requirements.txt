@@ -17,4 +17,4 @@ opentelemetry-instrumentation-asgi
 deprecated
 pytest
 ruff
-black
+black>=25.1,<27

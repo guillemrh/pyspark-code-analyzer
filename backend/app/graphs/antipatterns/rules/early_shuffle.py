@@ -29,7 +29,7 @@ class EarlyShuffleRule(AntiPatternRule):
                 if dag.nodes[p].stage_id is not None
             ]
 
-            if parent_stages:
+            if parent_stages and node.stage_id is not None:
                 min_parent_stage = min(parent_stages)
                 if node.stage_id - min_parent_stage <= 1:
                     suggestion = self._build_contextual_suggestion(
