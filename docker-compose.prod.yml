@@ -92,10 +92,11 @@ services:
           memory: 128M
 
   web:
-    build: ./web
+    build:
+      context: ./web
+      args:
+        - NEXT_PUBLIC_API_URL=https://pyspark-nexus.temujinlabs.com/api
     container_name: pyspark-llm-web
-    environment:
-      - NEXT_PUBLIC_API_URL=https://pyspark-nexus.temujinlabs.com/api
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:
