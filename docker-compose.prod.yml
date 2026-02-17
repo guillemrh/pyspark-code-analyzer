@@ -1,0 +1,112 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: pyspark-llm-redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    # No ports exposed — access via SSH tunnel if needed:
+    # ssh -L 16686:localhost:16686 root@46.225.171.144
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 256M
+
+  backend:
+    build: ./backend
+    container_name: pyspark-llm-backend
+    environment:
+      - APP_ENV=docker
+      - REDIS_URL=redis://redis:6379/0
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL}
+    ports:
+      - "127.0.0.1:8050:8000"
+    depends_on:
+      - redis
+      - jaeger
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  worker:
+    build: ./backend
+    container_name: pyspark-llm-worker
+    command: python -m celery -A app.workers.tasks.celery worker --loglevel=info --concurrency=1
+    environment:
+      - APP_ENV=docker
+      - REDIS_URL=redis://redis:6379/0
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL}
+    depends_on:
+      - redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+
+  prometheus:
+    image: prom/prometheus
+    # No ports exposed — access via SSH tunnel if needed:
+    # ssh -L 9090:localhost:9090 root@46.225.171.144
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  web:
+    build: ./web
+    container_name: pyspark-llm-web
+    environment:
+      - NEXT_PUBLIC_API_URL=https://pyspark-nexus.temujinlabs.com/api
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 256M
