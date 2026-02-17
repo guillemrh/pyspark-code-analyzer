@@ -140,9 +140,9 @@ export function Sidebar({ onSelectExample, recentJobs = [], isCollapsed = false,
       {/* Footer */}
       <div className="p-4 border-t border-white/10">
         <p className="text-xs text-text-muted text-center">
-          <a href="https://temujinlabs.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Temujin Labs</a>
+          <a href="https://temujinlabs.com" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-300 transition-colors">Temujin Labs</a>
           {" | Built by "}
-          <a href="https://github.com/guillemrh" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Guillem Rovira</a>
+          <a href="https://github.com/guillemrh" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-300 transition-colors">Guillem Rovira</a>
         </p>
       </div>
     </aside>
